@@ -1,0 +1,27 @@
+name = Cart
+description = Implements the shopping cart system and add to cart features.
+package = Commerce
+dependencies[] = commerce
+dependencies[] = commerce_checkout
+dependencies[] = commerce_line_item
+dependencies[] = commerce_order
+dependencies[] = commerce_product
+dependencies[] = commerce_product_pricing
+dependencies[] = commerce_product_reference
+dependencies[] = entity
+dependencies[] = rules
+dependencies[] = views
+core = 7.x
+
+; Views handlers
+files[] = includes/views/handlers/commerce_cart_handler_field_add_to_cart_form.inc
+
+; Simple tests
+files[] = tests/commerce_cart.test
+
+; Information added by drupal.org packaging script on 2011-08-23
+version = "7.x-1.0"
+core = "7.x"
+project = "commerce"
+datestamp = "1314124616"
+

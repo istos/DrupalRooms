@@ -1,0 +1,19 @@
+name = Commerce
+description = Defines features and functions common to the Commerce modules. Must be enabled to uninstall other Commerce modules.
+package = Commerce
+dependencies[] = entity
+dependencies[] = rules
+core = 7.x
+
+; Tests
+files[] = tests/commerce_base.test
+
+; Central Entity Controller.
+files[] = includes/commerce.controller.inc
+
+; Information added by drupal.org packaging script on 2011-08-23
+version = "7.x-1.0"
+core = "7.x"
+project = "commerce"
+datestamp = "1314124616"
+

@@ -1,0 +1,18 @@
+name = Rooms Availability
+description = Manages availability for Rooms
+core = 7.x
+version = 1.x-dev
+
+package = Rooms
+
+files[] = includes/rooms_availability.booking_event.inc
+files[] = includes/rooms_availability.unit_calendar.inc
+
+
+dependencies[] = rooms_unit
+dependencies[] = rooms
+dependencies[] = rooms_ui
+dependencies[] = date
+dependencies[] = date_api
+dependencies[] = date_popup
+dependencies[] = colorbox

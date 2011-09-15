@@ -1,0 +1,137 @@
+<?php
+
+
+/**
+ * Implements hook_schema().
+ */
+function commerce_product_schema() {
+  $schema = array();
+
+  $schema['commerce_product'] = array(
+    'description' => 'The base table for products.',
+    'fields' => array(
+      'product_id' => array(
+        'description' => 'The primary identifier for a product, used internally only.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'sku' => array(
+        'description' => 'The unique, human-readable identifier for a product.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'type' => array(
+        'description' => 'The {commerce_product_type}.type of this product.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'language' => array(
+        'description' => 'The {languages}.language of this product.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'title' => array(
+        'description' => 'The title of this product, always treated as non-markup plain text.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'uid' => array(
+        'description' => 'The {users}.uid that created this product.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'status' => array(
+        'description' => 'Boolean indicating whether or not the product appears in lists and may be added to orders.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp when the product was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'changed' => array(
+        'description' => 'The Unix timestamp when the product was most recently saved.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'data' => array(
+        'type' => 'blob',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'A serialized array of additional data.',
+      ),
+    ),
+    'primary key' => array('product_id'),
+    'indexes' => array(
+      'product_type' => array('type'),
+    ),
+    'unique keys' => array(
+      'sku' => array('sku'),
+    ),
+    'foreign keys' => array(
+      'creator' => array(
+        'table' => 'users',
+        'columns' => array('uid' => 'uid'),
+      ),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function commerce_product_uninstall() {
+  // Delete any field instance attached to a product type.
+  commerce_delete_instances('commerce_product');
+}
+
+/**
+ * Changes the name of the 'type' index on the commerce_product table to ensure
+ * compatibility with sqlite despite http://drupal.org/node/1008128.
+ */
+function commerce_product_update_7100() {
+  if (db_index_exists('commerce_product', 'type')) {
+    db_drop_index('commerce_product', 'type');
+  }
+  db_add_index('commerce_product', 'product_type', array('type'));
+}
+
+/**
+ * Update permission names for product entity management.
+ */
+function commerce_product_update_7101() {
+  // Load utility functions.
+  module_load_install('commerce');
+
+  $map = array(
+    'administer products' => 'administer commerce_product entities',
+    'access products' => 'view any commerce_product entity',
+  );
+  $entity_info = entity_get_info('commerce_product');
+  foreach ($entity_info['bundles'] as $bundle_name => $bundle_info) {
+    $map['create ' . $bundle_name . ' products'] = 'create commerce_product entities of bundle ' . $bundle_name;
+    $map['edit any ' . $bundle_name . ' product'] = 'edit any commerce_product entity of bundle ' . $bundle_name;
+    $map['edit own ' . $bundle_name . ' products'] = 'edit own commerce_product entities of bundle ' . $bundle_name;
+  }
+
+  commerce_update_rename_permissions($map);
+
+  return t('Role and custom View permissions updated for product entity management. Access checks in modules and permissions on default Views must be updated manually.');
+}
