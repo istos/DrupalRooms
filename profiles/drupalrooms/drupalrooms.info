@@ -33,7 +33,6 @@ dependencies[] = views
 dependencies[] = views_ui
 dependencies[] = date
 dependencies[] = date_popup
-dependencies[] = devel
 
 
 ; Install the Commerce modules.
@@ -66,7 +65,11 @@ dependencies[] = rooms_unit
 dependencies[] = rooms_availability
 dependencies[] = rooms_pricing
 dependencies[] = rooms_booking
-dependencies[] = rooms_test
+dependencies[] = rooms_booking_manager
+dependencies[] = rooms_availability_reference
+;dependencies[] = rooms_test
+
+
 
 files[] = rooms.profile
 
