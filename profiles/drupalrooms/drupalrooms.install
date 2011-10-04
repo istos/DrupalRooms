@@ -425,4 +425,10 @@ function drupalrooms_install() {
     ->execute();
   variable_set('admin_theme', 'seven');
   variable_set('node_admin_theme', '1');
+  
+  // Set the colorbox variables necessary to load 
+  variable_set('colorbox_load', 1);
+  
+  // Set the right pages so we can see colobox in admin pages
+  variable_set('colorbox_pages', "img_assist*\nimce*\nnode/add/*\nnode/*/edit");
 }
