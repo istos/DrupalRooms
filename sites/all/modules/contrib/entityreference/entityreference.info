@@ -1,0 +1,22 @@
+name = Entity Reference
+description = Provides a field that can reference other entities.
+core = 7.x
+dependencies[] = entity
+dependencies[] = ctools
+
+; Migrate handler.
+files[] = entityreference.migrate.inc
+
+; Our default entity handler.
+files[] = entityreference.handler.inc
+files[] = handler/base.inc
+
+; Tests.
+files[] = tests/entityreference.handlers.test
+
+; Information added by drupal.org packaging script on 2011-09-16
+version = "7.x-1.0-alpha2"
+core = "7.x"
+project = "entityreference"
+datestamp = "1316171203"
+
