@@ -283,6 +283,8 @@ class EntityAPIRulesIntegrationTestCase extends DrupalWebTestCase {
 
   function setUp() {
     parent::setUp('entity', 'entity_test', 'rules');
+    // Make sure the logger is enabled so the debug log is saved.
+    variable_set('rules_debug_log', 1);
   }
 
   /**
@@ -367,7 +369,7 @@ class EntityMetadataTestCase extends DrupalWebTestCase {
     $account = user_save($account, array('name' => '<b>BadName</b>'));
     $title = '<b>Is it bold?<b>';
     $body[LANGUAGE_NONE][0] = array('value' => '<b>The body & nothing.</b>', 'summary' => '<b>The body.</b>');
-    $node = $this->drupalCreateNode(array('uid' => $account->uid, 'name' => $account->name, 'body' => $body, 'title' => $title, 'summary' => ''));
+    $node = $this->drupalCreateNode(array('uid' => $account->uid, 'name' => $account->name, 'body' => $body, 'title' => $title, 'summary' => '', 'type' => 'page'));
 
     // First test without sanitizing.
     $wrapper = entity_metadata_wrapper('node', $node);
@@ -487,6 +489,10 @@ class EntityMetadataTestCase extends DrupalWebTestCase {
     $wrapper->delete();
     $return = node_load($wrapper->getIdentifier());
     $this->assertFalse($return, "Node has been successfully deleted.");
+
+    // Ensure changing the bundle changes available wrapper properties.
+    $wrapper->type->set('article');
+    $this->assertTrue(isset($wrapper->field_tags), 'Changing bundle changes available wrapper properties.');
 
     // Test labels.
     $user = $this->drupalCreateUser();
@@ -673,13 +679,9 @@ class EntityMetadataTestCase extends DrupalWebTestCase {
     $s = serialize($wrapper2);
     node_delete($node->nid);
     $this->assertFalse(node_load($node->nid), 'Node deleted.');
-    try {
-      unserialize($s)->value();
-      $this->fail("Loading hasn't created an exception.");
-    }
-    catch (EntityMetadataWrapperException $e) {
-      $this->pass("Exception was thrown: ". $e->getMessage());
-    }
+
+    $value = unserialize($s)->value();
+    $this->assertNull($value, 'Tried to load not existing node.');
   }
 }
 

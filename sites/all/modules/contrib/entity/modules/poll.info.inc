@@ -7,6 +7,7 @@
 
 /**
  * Implements hook_entity_property_info_alter() on top of poll module.
+ *
  * @see entity_entity_property_info_alter()
  */
 function entity_metadata_poll_entity_property_info_alter(&$info) {

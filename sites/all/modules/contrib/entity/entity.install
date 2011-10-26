@@ -12,3 +12,10 @@ function entity_update_7000() {
   // This empty update is required such that all caches are cleared as
   // necessary.
 }
+
+/**
+ * Remove the deprecated 'entity_defaults_built' variable.
+ */
+function entity_update_7001() {
+  variable_del('entity_defaults_built');
+}

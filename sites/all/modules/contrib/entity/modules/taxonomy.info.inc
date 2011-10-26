@@ -7,6 +7,7 @@
 
 /**
  * Implements hook_entity_property_info() on top of taxonomy module.
+ *
  * @see entity_entity_property_info()
  */
 function entity_metadata_taxonomy_entity_property_info() {
@@ -58,7 +59,6 @@ function entity_metadata_taxonomy_entity_property_info() {
   $properties['vocabulary'] = array(
     'label' => t("Vocabulary"),
     'description' => t("The vocabulary the taxonomy term belongs to."),
-    'getter callback' => 'entity_metadata_taxonomy_term_get_properties',
     'setter callback' => 'entity_metadata_taxonomy_term_setter',
     'type' => 'taxonomy_vocabulary',
     'required' => TRUE,

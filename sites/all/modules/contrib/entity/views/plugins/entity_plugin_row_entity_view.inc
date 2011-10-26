@@ -18,8 +18,8 @@ class entity_plugin_row_entity_view extends views_plugin_row {
     parent::init($view, $display, $options);
 
     $table_data = views_fetch_data($this->view->base_table);
-    $this->entity_type = $table_data['table']['base']['entity type'];
-    $this->skip_load = !empty($table_data['table']['base']['skip entity load']);
+    $this->entity_type = $table_data['table']['entity type'];
+    $this->skip_load = !empty($table_data['table']['skip entity load']);
 
     // Set base table and field information as used by views_plugin_row to
     // select the entity id if used with default query class.
@@ -102,7 +102,7 @@ class entity_plugin_row_entity_view extends views_plugin_row {
     else {
       $id = (is_object($result->entity) ? entity_id($this->entity_type, $result->entity) : $result->entity);
     }
-    if (isset($id)) {
+    if (isset($id) && isset($this->entities[$id])) {
       $content = entity_view($this->entity_type, array($id => $this->entities[$id]), $this->options['view_mode']);
       return drupal_render($content);
     }

@@ -27,12 +27,13 @@ class EntityDefaultUIController {
     $items = array();
     $id_count = count(explode('/', $this->path));
     $wildcard = isset($this->entityInfo['admin ui']['menu wildcard']) ? $this->entityInfo['admin ui']['menu wildcard'] : '%entity_object';
+    $plural_label = isset($this->entityInfo['plural label']) ? $this->entityInfo['plural label'] : $this->entityInfo['label'] . 's';
 
     $items[$this->path] = array(
-      'title' => $this->entityInfo['label'] . 's',
+      'title' => $plural_label,
       'page callback' => 'drupal_get_form',
       'page arguments' => array($this->entityType . '_overview_form', $this->entityType),
-      'description' => 'Manage ' . $this->entityInfo['label'] . 's.',
+      'description' => 'Manage ' . $plural_label . '.',
       'access callback' => 'entity_access',
       'access arguments' => array('view', $this->entityType),
       'file' => 'includes/entity.ui.inc',
@@ -175,7 +176,7 @@ class EntityDefaultUIController {
    *   A renderable array.
    */
   public function overviewTable($conditions = array()) {
-    $entities = entity_load($this->entityType);
+    $entities = entity_load($this->entityType, FALSE, $conditions);
     ksort($entities);
 
     $rows = array();
