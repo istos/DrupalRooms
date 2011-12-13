@@ -22,16 +22,22 @@ function commerce_payment_credit_card_form($fields = array(), $default = array()
     'owner' => '',
     'number' => '',
     'start_month' => '',
-    'start_year' => '',
-    'exp_month' => '',
-    'exp_year' => '',
+    'start_year' => date('Y') - 5,
+    'exp_month' => date('m'),
+    'exp_year' => date('Y'),
     'issue' => '',
     'code' => '',
     'bank' => '',
   );
 
+  $current_year_2 = date('y');
+  $current_year_4 = date('Y');
+
   $form['credit_card'] = array(
     '#tree' => TRUE,
+    '#attached' => array(
+      'css' => array(drupal_get_path('module', 'commerce_payment') . '/theme/commerce_payment.credit_card.css'),
+    ),
   );
 
   // Add a card type selector if specified.
@@ -82,16 +88,26 @@ function commerce_payment_credit_card_form($fields = array(), $default = array()
   if (isset($fields['start_date'])) {
     $form['credit_card']['start_month'] = array(
       '#type' => 'select',
-      '#title' => t('Start month'),
-      '#options' => commerce_months(),
-      '#default_value' => $default['start_month'],
+      '#title' => t('Start date'),
+      '#options' => drupal_map_assoc(array_keys(commerce_months())),
+      '#default_value' => strlen($default['start_month']) == 1 ? '0' . $default['start_month'] : $default['start_month'],
+      '#required' => TRUE,
+      '#prefix' => '<div class="commerce-credit-card-start">',
+      '#suffix' => '<span class="commerce-month-year-divider">/</span>',
     );
+
+    // Build a year select list that uses a 4 digit key with a 2 digit value.
+    $options = array();
+
+    for ($i = -10; $i < 1; $i++) {
+      $options[$current_year_4 + $i] = $current_year_2 + $i;
+    }
 
     $form['credit_card']['start_year'] = array(
       '#type' => 'select',
-      '#title' => t('Start year'),
-      '#options' => drupal_map_assoc(range(date('Y') - 10, date('Y'))),
+      '#options' => $options,
       '#default_value' => $default['start_year'],
+      '#suffix' => '</div>',
     );
   }
 
@@ -99,14 +115,23 @@ function commerce_payment_credit_card_form($fields = array(), $default = array()
   $form['credit_card']['exp_month'] = array(
     '#type' => 'select',
     '#title' => t('Expiration'),
-    '#options' => commerce_months(),
-    '#default_value' => $default['exp_month'],
+    '#options' => drupal_map_assoc(array_keys(commerce_months())),
+    '#default_value' => strlen($default['exp_month']) == 1 ? '0' . $default['exp_month'] : $default['exp_month'],
+    '#required' => TRUE,
     '#prefix' => '<div class="commerce-credit-card-expiration">',
+    '#suffix' => '<span class="commerce-month-year-divider">/</span>',
   );
+
+  // Build a year select list that uses a 4 digit key with a 2 digit value.
+  $options = array();
+
+  for ($i = 0; $i < 20; $i++) {
+    $options[$current_year_4 + $i] = $current_year_2 + $i;
+  }
 
   $form['credit_card']['exp_year'] = array(
     '#type' => 'select',
-    '#options' => drupal_map_assoc(range(date('Y'), date('Y') + 20)),
+    '#options' => $options,
     '#default_value' => $default['exp_year'],
     '#suffix' => '</div>',
   );
@@ -430,8 +455,8 @@ function commerce_payment_validate_credit_card_number($number) {
  *
  * @return
  *   TRUE for cards whose start date is blank (both month and year) or in the
- *     past, 'year' or 'month' for expired cards indicating which value should
- *     receive the error.
+ *   past, 'year' or 'month' for expired cards indicating which value should
+ *   receive the error.
  */
 function commerce_payment_validate_credit_card_start_date($month, $year) {
   if (empty($month) && empty($year)) {
@@ -440,6 +465,10 @@ function commerce_payment_validate_credit_card_start_date($month, $year) {
 
   if (empty($month) || empty($year)) {
     return empty($month) ? 'month' : 'year';
+  }
+
+  if ($month < 1 || $month > 12) {
+    return 'month';
   }
 
   if ($year > date('Y')) {
@@ -464,9 +493,13 @@ function commerce_payment_validate_credit_card_start_date($month, $year) {
  *
  * @return
  *   TRUE for non-expired cards, 'year' or 'month' for expired cards indicating
- *     which value should receive the error.
+ *   which value should receive the error.
  */
 function commerce_payment_validate_credit_card_exp_date($month, $year) {
+  if ($month < 1 || $month > 12) {
+    return 'month';
+  }
+
   if ($year < date('Y')) {
     return 'year';
   }

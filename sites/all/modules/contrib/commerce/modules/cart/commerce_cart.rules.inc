@@ -128,6 +128,57 @@ function commerce_cart_rules_action_info() {
     ),
   );
 
+  $actions['commerce_cart_add_to_cart_message'] = array(
+    'label' => t('Display a translatable Add to Cart message'),
+    'parameter' => array(
+      'commerce_product' => array(
+        'type' => 'commerce_product',
+        'label' => t('Product added to the cart'),
+      ),
+    ),
+    'group' => t('Commerce Cart'),
+    'callbacks' => array(
+      'execute' => 'commerce_cart_rules_add_to_cart_message',
+    ),
+  );
+
+  $actions['commerce_cart_product_add_by_sku'] = array(
+    'label' => t('Add a product to the cart'),
+    'parameter' => array(
+      'user' => array(
+        'type' => 'user',
+        'label' => t('User'),
+        'description' => t('Specify the user whose shopping cart order the product will be added to, typically <em>site:current-user</em>.'),
+      ),
+      'sku' => array(
+        'type' => 'text',
+        'label' => t('Product SKU'),
+        'description' => t('The SKU of the product to add to the cart.'),
+      ),
+      'quantity' => array(
+        'type' => 'integer',
+        'label' => t('Quantity'),
+        'default value' => 1,
+      ),
+      'combine' => array(
+        'type' => 'boolean',
+        'label' => t('Combine similar items in the cart'),
+        'description' => t('If checked, the product will be combined added to an existing similar product line item in the cart by incrementing its quantity.'),
+        'default value' => TRUE,
+      ),
+    ),
+    'group' => t('Commerce Cart'),
+    'callbacks' => array(
+      'execute' => 'commerce_cart_rules_product_add_by_sku',
+    ),
+    'provides' => array(
+      'product_add_line_item' => array(
+        'type' => 'commerce_line_item',
+        'label' => t('Added product line item'),
+      ),
+    ),
+  );
+
   return $actions;
 }
 
@@ -136,6 +187,34 @@ function commerce_cart_rules_action_info() {
  */
 function commerce_cart_rules_empty($order) {
   commerce_cart_order_empty($order);
+}
+
+/**
+ * Rules action: displays a the default translatable Add to Cart message.
+ */
+function commerce_cart_rules_add_to_cart_message($product) {
+  drupal_set_message(t('%title added to <a href="!cart-url">your cart</a>.', array('%title' => $product->title, '!cart-url' => url('cart'))));
+}
+
+/**
+ * Rules action: adds a product to a user's shopping cart order.
+ */
+function commerce_cart_rules_product_add_by_sku($user, $sku, $quantity = 1, $combine = TRUE) {
+  // Ensure we have a valid product SKU.
+  if ($product = commerce_product_load_by_sku(trim($sku))) {
+    // Pull the uid from the user passed in.
+    if (empty($user) || empty($user->uid)) {
+      $uid = NULL;
+    }
+    else {
+      $uid = $user->uid;
+    }
+
+    // Only return an added line item.
+    if ($line_item = commerce_cart_product_add_by_id($product->product_id, $quantity, $combine, $uid)) {
+      return array('product_add_line_item' => $line_item);
+    }
+  }
 }
 
 /**

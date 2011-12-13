@@ -63,12 +63,14 @@ function entity_metadata_node_entity_property_info() {
     'description' => t("The URL of the node."),
     'getter callback' => 'entity_metadata_entity_get_properties',
     'type' => 'uri',
+    'computed' => TRUE,
   );
   $properties['edit_url'] = array(
     'label' => t("Edit URL"),
     'description' => t("The URL of the node's edit page."),
     'getter callback' => 'entity_metadata_node_get_properties',
     'type' => 'uri',
+    'computed' => TRUE,
   );
   $properties['status'] = array(
     'label' => t("Status"),

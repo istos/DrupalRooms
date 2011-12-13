@@ -11,6 +11,16 @@
  */
 function commerce_commerce_currency_info() {
   return array(
+    'AED' => array(
+      'code' => 'AED',
+      'symbol' => 'د.إ',
+      'name' => t('United Arab Emirates Dirham'),
+      'numeric_code' => '784',
+      'symbol_placement' => 'after',
+      'code_placement' => '',
+      'minor_unit' => t('Fils'),
+      'major_unit' => t('Dirham'),
+    ),
     'AFN' => array(
       'code' => 'AFN',
       'symbol' => 'Af',
@@ -672,6 +682,16 @@ function commerce_commerce_currency_info() {
       'minor_unit' => t('Dirham'),
       'major_unit' => t('Dinar'),
     ),
+    'MAD' => array(
+      'code' => 'MAD',
+      'symbol' => ' Dhs',
+      'name' => t('Moroccan Dirham'),
+      'numeric_code' => '504',
+      'symbol_placement' => 'after',
+      'code_placement' => '',
+      'minor_unit' => t('Santimat'),
+      'major_unit' => t('Dirhams'),
+    ),
     'MMK' => array(
       'code' => 'MMK',
       'symbol' => 'MMK',
@@ -723,10 +743,13 @@ function commerce_commerce_currency_info() {
       'minor_unit' => t('Cent'),
       'major_unit' => t('Rupee'),
     ),
-    'MXP' => array(
-      'code' => 'MXP',
-      'symbol' => 'MX$',
-      'name' => t('Mexican Silver Peso (1861-1992)'),
+    'MXN' => array(
+      'code' => 'MXN',
+      'symbol' => '$',
+      'name' => t('Mexican Peso'),
+      'numeric_code' => '484',
+      'symbol_placement' => 'before',
+      'code_placement' => '',
       'minor_unit' => t('Centavo'),
       'major_unit' => t('Peso'),
     ),
@@ -847,11 +870,11 @@ function commerce_commerce_currency_info() {
     ),
     'PLN' => array(
       'code' => 'PLN',
-      'symbol' => 'zl',
-      'name' => t('Polish Zloty'),
+      'symbol' => 'zł',
+      'name' => t('Polish Złoty'),
       'numeric_code' => '985',
       'minor_unit' => t('Grosz'),
-      'major_unit' => t('Zlotych'),
+      'major_unit' => t('Złotych'),
     ),
     'PYG' => array(
       'code' => 'PYG',
@@ -1128,9 +1151,13 @@ function commerce_commerce_currency_info() {
     ),
     'VND' => array(
       'code' => 'VND',
-      'symbol' => '₫',
+      'symbol' => 'đ',
       'name' => t('Vietnamese Dong'),
       'decimals' => 0,
+      'thousands_separator' => '.',
+      'symbol_placement' => 'after',
+      'symbol_spacer' => '',
+      'code_placement' => '',
       'numeric_code' => '704',
       'minor_unit' => t('Hà'),
       'major_unit' => t('Dong'),

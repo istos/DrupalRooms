@@ -33,8 +33,10 @@
  *   invoking the field API bundle attachers. To enable this functionality,
  *   specify the name of the fieldable entity type. But note, that the usual
  *   information about the bundles is still required for the fieldable entity
- *   type, as described by the documentation of hook_entity_info(). See
- *   entity_test_entity_info() for an example.
+ *   type, as described by the documentation of hook_entity_info(). Also,
+ *   field_attach_delete_bundle() has to be invoked manually upon module
+ *   uninstallation. See entity_test_entity_info() and entity_test_uninstall()
+ *   for examples.
  * - module: (optional) The module providing the entity type. This is optional,
  *   but strongly suggested.
  * - exportable: (optional) Whether the entity is exportable. Defaults to FALSE.
@@ -131,6 +133,11 @@
  * - form callback: (optional) Specfiy a callback that returns a fully built
  *   edit form for your entity type. See entity_form().
  *   In case the 'admin ui' is used, no callback needs to be specified.
+ * - entity cache: (optional) Whether entities should be cached using the cache
+ *   system. Requires the entitycache module to be installed and enabled. As
+ *   cached entities are only retrieved by id key, the cache would not apply to
+ *   exportable entities retrieved by name key. If enabled, 'field cache' is
+ *   obsolete and should be disabled. Defaults to FALSE.
  *
  * @see hook_entity_info()
  * @see entity_metadata_hook_entity_info()
@@ -292,15 +299,23 @@ function entity_metadata_hook_entity_info() {
  *       is only be taken into account, if no 'access callback' is given.
  *     - schema field: (optional) In case the property is directly based upon
  *       a field specified in the entity's hook_schema(), the name of the field.
- *     - query callback: (optional) A callback for querying for entities having
- *       the given property value. See entity_property_query().
- *       In case a 'schema field' has been specified, it is not necessary to
- *       specify a callback as it will default to 'entity_metadata_table_query'.
+ *     - queryable: (optional) Whether a property is queryable with
+ *       EntityFieldQuery. Defaults to TRUE if a 'schema field' is specified, or
+ *       if the deprecated 'query callback' is set to
+ *       'entity_metadata_field_query'. Otherwise it defaults to FALSE.
+ *     - query callback: (deprecated) A callback for querying for entities
+ *       having the given property value. See entity_property_query().
+ *       Generally, properties should be queryable via EntityFieldQuery. If
+ *       that is the case, just set 'queryable' to TRUE.
  *     - required: (optional) Whether this property is required for the creation
  *       of a new instance of its entity. See
  *       entity_property_values_create_entity().
  *     - field: (optional) A boolean indicating whether a property is stemming
  *       from a field.
+ *     - computed: (optional) A boolean indiciating whether a property is
+ *       computed, i.e. the property value is not stored or loaded by the
+ *       entity's controller but determined on the fly by the getter callback.
+ *       Defaults to FALSE.
  *     - sanitized: (optional) For textual properties only, whether the text is
  *       already sanitized. In this case you might want to also specify a raw
  *       getter callback. Defaults to FALSE.
@@ -394,6 +409,28 @@ function entity_hook_field_info() {
       // ...
     ),
   );
+}
+
+/**
+ * Alter the handlers used by the data selection tables provided by this module.
+ *
+ * @param array $field_handlers
+ *   An array of the field handler classes to use for specific types. The keys
+ *   are the types, mapped to their respective classes. Contained types are:
+ *   - All primitive types known by the entity API (see
+ *     hook_entity_property_info()).
+ *   - options: Special type for fields having an options list.
+ *   - field: Special type for Field API fields.
+ *   - entity: Special type for entity-valued fields.
+ *   - relationship: Views relationship handler to use for relationships.
+ *   Values for all specific entity types can be additionally added.
+ *
+ * @see entity_views_field_definition()
+ * @see entity_views_get_field_handlers()
+ */
+function hook_entity_views_field_handlers_alter(array &$field_handlers) {
+  $field_handlers['duration'] = 'example_duration_handler';
+  $field_handlers['node'] = 'example_node_handler';
 }
 
 /**

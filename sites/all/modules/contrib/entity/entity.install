@@ -19,3 +19,10 @@ function entity_update_7000() {
 function entity_update_7001() {
   variable_del('entity_defaults_built');
 }
+
+/**
+ * Clear caches and rebuild registry.
+ */
+function entity_update_7002() {
+  // Do nothing, update.php clears cache for us in case there is an update.
+}

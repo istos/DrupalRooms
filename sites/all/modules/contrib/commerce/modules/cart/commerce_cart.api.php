@@ -7,6 +7,20 @@
 
 
 /**
+ * Allows modules to return a shopping cart order ID for a user before the Cart
+ * module determines it using its default queries.
+ *
+ * @param $uid
+ *   The uid of the user whose shopping cart order ID should be returned.
+ *
+ * @return
+ *   The order ID or nothing if the function did not find one.
+ */
+function hook_commerce_cart_order_id($uid) {
+  // No example.
+}
+
+/**
  * Determines whether or not the given order is a shopping cart order.
  *
  * When determining if an order should be considered a shopping cart order, the
@@ -59,8 +73,27 @@ function hook_commerce_cart_order_convert($order_wrapper, $account) {
 }
 
 /**
+ * Allows modules to perform additional processing to refresh an individual line
+ * item on a shopping cart order.
+ *
+ * Prior to this hook being invoked, product line items will have already had
+ * their sell prices refreshed via the creation of a new line item for the same
+ * product being passed through Rules for calculation.
+ *
+ * @param $line_item
+ *   A line item object that should be updated as necessary for the refresh.
+ * @param $order_wrapper
+ *   An EntityMetadataWrapper for the order the line item is attached to.
+ *
+ * @see commerce_cart_order_refresh()
+ */
+function hook_commerce_cart_line_item_refresh($line_item, $order_wrapper) {
+  // No example.
+}
+
+/**
  * Allows modules to perform additional processing to refresh a shopping cart
- *   order's contents.
+ * order's contents.
  *
  * When an order is loaded, if it is in a shopping cart order status, its
  * contents are refreshed to get the current product prices. This prevents users
@@ -142,4 +175,57 @@ function hook_commerce_cart_product_comparison_properties_alter(&$comparison_pro
   // Force separate line items when the same product is added to the cart from
   // different display paths.
   $comparison_properties[] = 'commerce_display_path';
+}
+
+/**
+ * Rules event hook: allows modules to operate prior to adding a product to the
+ * cart but does not actually allow you to interrupt the process.
+ *
+ * Invoking this Rules event / hook does not result in the processing of any
+ * return value, so it is not useful for interrupting a cart product add
+ * operation outside of a redirect.
+ *
+ * @param $order
+ *   The cart order object the product will be added to.
+ * @param $product
+ *   The product being added to the cart.
+ * @param $quantity
+ *   The quantity of the product to add to the cart.
+ */
+function hook_commerce_cart_product_prepare($order, $product, $quantity) {
+  // No example.
+}
+
+/**
+ * Rules event hook: allows modules to react to the addition of a product to a
+ * shopping cart order.
+ *
+ * @param $order
+ *   The cart order object the product was added to.
+ * @param $product
+ *   The product that was added to the cart.
+ * @param $quantity
+ *   The quantity of the product added to the cart.
+ * @param $line_item
+ *   The new or updated line item representing that product on the given order.
+ */
+function hook_commerce_cart_product_add($order, $product, $quantity, $line_item) {
+  // No example.
+}
+
+/**
+ * Rules event hook: allows modules to react to the removal of a product from a
+ * shopping cart order.
+ *
+ * @param $order
+ *   The cart order object the product was removed from.
+ * @param $product
+ *   The product that was removed from the cart.
+ * @param $quantity
+ *   The quantity of the product line item removed from the cart.
+ * @param $line_item
+ *   The product line item that was deleted to remove the product from the cart.
+ */
+function hook_commerce_cart_product_remove($order, $product, $quantity, $line_item) {
+  // No example.
 }

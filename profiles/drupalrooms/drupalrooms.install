@@ -431,4 +431,18 @@ function drupalrooms_install() {
   
   // Set the right pages so we can see colobox in admin pages
   variable_set('colorbox_pages', "img_assist*\nimce*\nnode/add/*\nnode/*/edit");
+
+  // Create a room type entity
+  $rooms_type_standard = array(
+    'type' => 'standard',
+    'label' => 'Standard',
+    'data' => array (
+      'base_price' => 100,
+      'sleeps' => 2
+    ),
+  );
+  
+  $rooms_unit_type_controller = entity_get_controller('rooms_unit_type');
+  rooms_unit_type_save($rooms_unit_type_controller->create($rooms_type_standard));
+
 }

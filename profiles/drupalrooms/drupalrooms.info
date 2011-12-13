@@ -67,7 +67,6 @@ dependencies[] = rooms_pricing
 dependencies[] = rooms_booking
 dependencies[] = rooms_booking_manager
 dependencies[] = rooms_availability_reference
-;dependencies[] = rooms_test
 
 
 

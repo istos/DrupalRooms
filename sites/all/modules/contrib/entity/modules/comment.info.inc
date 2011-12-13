@@ -66,12 +66,14 @@ function entity_metadata_comment_entity_property_info() {
     'description' => t("The URL of the comment."),
     'getter callback' => 'entity_metadata_entity_get_properties',
     'type' => 'uri',
+    'computed' => TRUE,
   );
   $properties['edit_url'] = array(
     'label' => t("Edit URL"),
     'description' => t("The URL of the comment's edit page."),
     'getter callback' => 'entity_metadata_comment_get_properties',
     'type' => 'uri',
+    'computed' => TRUE,
   );
   $properties['created'] = array(
     'label' => t("Date created"),

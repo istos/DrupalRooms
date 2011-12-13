@@ -6,7 +6,7 @@
  */
 
 /**
- * Implement hook_entity_info().
+ * Implements hook_entity_info().
  */
 function entity_test_entity_info() {
   $return = array(
@@ -56,6 +56,13 @@ function entity_test_entity_info() {
       'label' => $type->label,
     );
   }
+
+  // Support entity cache module.
+  if (module_exists('entitycache')) {
+    $return['entity_test']['field cache'] = FALSE;
+    $return['entity_test']['entity cache'] = TRUE;
+  }
+
   return $return;
 }
 

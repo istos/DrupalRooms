@@ -63,7 +63,7 @@ class entity_views_handler_relationship_by_bundle extends views_handler_relation
    * Make sure only checked bundle types are left.
    */
   function options_submit(&$form, &$form_state) {
-    $form_state['values']['bundle_types'] = array_filter($form_state['values']['bundle_types']);
+    $form_state['values']['options']['bundle_types'] = array_filter($form_state['values']['options']['bundle_types']);
     parent::options_submit($form, $form_state);
   }
 
@@ -89,10 +89,11 @@ class entity_views_handler_relationship_by_bundle extends views_handler_relation
 
     // Add an extra clause to the join if there are bundle types selected.
     if ($this->options['bundle_types']) {
+      $entity_info = entity_get_info($table_data['table']['entity type']);
       $def['extra'] = array(
         array(
           // The table and the IN operator are implicit.
-          'field' => 'type',
+          'field' => $entity_info['bundle keys']['bundle'],
           'value' => $this->options['bundle_types'],
         ),
       );

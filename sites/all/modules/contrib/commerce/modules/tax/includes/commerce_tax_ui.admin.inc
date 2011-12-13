@@ -62,7 +62,6 @@ function commerce_tax_ui_overview($type) {
   return theme('table', array('header' => $header, 'rows' => $rows));
 }
 
-
 /**
  * Builds an overview of a tax rate for display to an administrator.
  *
@@ -213,13 +212,13 @@ function commerce_tax_ui_tax_rate_form($form, &$form_state, $tax_rate) {
     $form['actions']['delete'] = array(
       '#type' => 'submit',
       '#value' => t('Delete tax rate'),
-      '#suffix' => l('Cancel', 'admin/commerce/config/taxes'),
+      '#suffix' => l(t('Cancel'), 'admin/commerce/config/taxes'),
       '#submit' => array('commerce_tax_ui_tax_rate_form_delete_submit'),
       '#weight' => 45,
     );
   }
   else {
-    $form['actions']['submit']['#suffix'] = l('Cancel', 'admin/commerce/config/taxes');
+    $form['actions']['submit']['#suffix'] = l(t('Cancel'), 'admin/commerce/config/taxes');
   }
 
   return $form;
@@ -382,13 +381,7 @@ function commerce_tax_ui_tax_type_form($form, &$form_state, $tax_type) {
     '#type' => 'radios',
     '#title' => t('Tax amount rounding mode'),
     '#description' => t('Specify what type of rounding should occur when tax rates of this type are calculated for the unit price of a line item. Sales taxes will generally not round these amounts at the unit price level, while VAT style taxes will generally round the half up.'),
-    '#options' => array(
-      COMMERCE_TAX_ROUND_NONE => t('Do not round tax amounts'),
-      COMMERCE_TAX_ROUND_HALF_UP => t('Round the half up'),
-      COMMERCE_TAX_ROUND_HALF_DOWN => t('Round the half down'),
-      COMMERCE_TAX_ROUND_HALF_EVEN => t('Round the half to the nearest even number'),
-      COMMERCE_TAX_ROUND_HALF_ODD => t('Round the half to the nearest odd number'),
-    ),
+    '#options' => commerce_round_mode_options_list(),
     '#default_value' => $tax_type['round_mode'],
   );
 
@@ -407,13 +400,13 @@ function commerce_tax_ui_tax_type_form($form, &$form_state, $tax_type) {
     $form['actions']['delete'] = array(
       '#type' => 'submit',
       '#value' => t('Delete tax type'),
-      '#suffix' => l('Cancel', 'admin/commerce/config/taxes/types'),
+      '#suffix' => l(t('Cancel'), 'admin/commerce/config/taxes/types'),
       '#submit' => array('commerce_tax_ui_tax_type_form_delete_submit'),
       '#weight' => 45,
     );
   }
   else {
-    $form['actions']['submit']['#suffix'] = l('Cancel', 'admin/commerce/config/taxes/types');
+    $form['actions']['submit']['#suffix'] = l(t('Cancel'), 'admin/commerce/config/taxes/types');
   }
 
   return $form;

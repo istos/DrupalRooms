@@ -225,10 +225,20 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
   public function create(array $values = array()) {
     // Add is_new property if it is not set.
     $values += array('is_new' => TRUE);
+
+    // If there is a class for this entity type, instantiate it now.
     if (isset($this->entityInfo['entity class']) && $class = $this->entityInfo['entity class']) {
-      return new $class($values, $this->entityType);
+      $entity = new $class($values, $this->entityType);
     }
-    return (object) $values;
+    else {
+      // Otherwise use a good old stdClass.
+      $entity = (object) $values;
+    }
+
+    // Allow other modules to alter the created entity.
+    drupal_alter('commerce_entity_create', $this->entityType, $entity);
+
+    return $entity;
   }
 
   /**
@@ -307,6 +317,21 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
    *   The renderable array.
    */
   public function view($entities, $view_mode = '', $langcode = NULL, $page = NULL) {
+    // Create a new entities array keyed by entity ID.
+    $rekeyed_entities = array();
+
+    foreach ($entities as $key => $entity) {
+      // Use the entity's ID if available and fallback to its existing key value
+      // if we couldn't determine it.
+      if (isset($entity->{$this->idKey})) {
+        $key = $entity->{$this->idKey};
+      }
+
+      $rekeyed_entities[$key] = $entity;
+    }
+
+    $entities = $rekeyed_entities;
+
     // If no view mode is specified, use the first one available..
     if (!isset($this->entityInfo['view modes'][$view_mode])) {
       reset($this->entityInfo['view modes']);

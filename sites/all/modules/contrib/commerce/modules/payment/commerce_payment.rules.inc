@@ -75,6 +75,28 @@ function commerce_payment_rules_condition_info() {
     ),
   );
 
+  $conditions['commerce_payment_selected_payment_method'] = array(
+    'label' => t('Selected payment method comparison'),
+    'parameter' => array(
+      'commerce_order' => array(
+        'type' => 'commerce_order',
+        'label' => t('Order'),
+        'description' => t('The order whose selected payment method (if any) should be compared against the method specified below.'),
+      ),
+      'method_id' => array(
+        'type' => 'text',
+        'label' => t('Payment method'),
+        'description' => t('This condition will perform a simple equivalency check to see if the payment method you specify matches what a customer selected on the checkout form.'),
+        'options list' => 'commerce_payment_rules_payment_method_options_list',
+        'restriction' => 'input',
+      ),
+    ),
+    'group' => t('Commerce Payment'),
+    'callbacks' => array(
+      'execute' => 'commerce_payment_rules_compare_selected_payment_method',
+    ),
+  );
+
   return $conditions;
 }
 
@@ -108,6 +130,27 @@ function commerce_payment_rules_compare_balance($order, $operator, $value) {
 }
 
 /**
+ * Returns an options list of available payment methods including a None option.
+ */
+function commerce_payment_rules_payment_method_options_list() {
+  return array('-none-' => t('None')) + commerce_payment_method_get_title();
+}
+
+/**
+ * Condition callback: compares the selected payment method for an order.
+ */
+function commerce_payment_rules_compare_selected_payment_method($order, $method_id) {
+  if (!empty($order->data['payment_method'])) {
+    list($selected_method_id, ) = explode('|', $order->data['payment_method']);
+  }
+  else {
+    $selected_method_id = '-none-';
+  }
+
+  return $method_id == $selected_method_id;
+}
+
+/**
  * Implements hook_rules_action_info().
  */
 function commerce_payment_rules_action_info() {
@@ -118,7 +161,11 @@ function commerce_payment_rules_action_info() {
     $actions['commerce_payment_enable_' . $payment_method['method_id']] = array(
       'label' => t('Enable payment method: @method', array('@method' => $payment_method['title'])),
       'parameter' => array(
-        'commerce_order' => array('type' => 'commerce_order', 'label' => t('Order', array(), array('context' => 'a drupal commerce order'))),
+        'commerce_order' => array(
+          'type' => 'commerce_order',
+          'label' => t('Order', array(), array('context' => 'a drupal commerce order')),
+          'skip save' => TRUE,
+        ),
         'payment_method' => array(
           'type' => 'commerce_payment_settings',
           'restriction' => 'input',

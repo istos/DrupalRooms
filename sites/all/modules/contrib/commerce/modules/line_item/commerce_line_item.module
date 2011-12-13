@@ -231,16 +231,63 @@ function commerce_line_item_views_api() {
  * Implements hook_enable().
  */
 function commerce_line_item_enable() {
-  // Loop through and configure all the currently defined line item types.
-  foreach (commerce_line_item_types() as $line_item_type) {
-    commerce_line_item_configure_line_item_type($line_item_type);
-  }
+  commerce_line_item_configure_line_item_types();
 }
 
 /**
  * Implements hook_modules_enabled().
  */
 function commerce_line_item_modules_enabled($modules) {
+  commerce_line_item_configure_line_item_fields($modules);
+}
+
+/**
+ * Configures line item types defined by enabled modules.
+ */
+function commerce_line_item_configure_line_item_types() {
+  foreach (commerce_line_item_types() as $line_item_type) {
+    commerce_line_item_configure_line_item_type($line_item_type);
+  }
+}
+
+/**
+ * Configures a line item type by adding default price fields and then calling
+ * its configuration callback.
+ *
+ * @param $line_item_type
+ *   The fully loaded line item type array to configure.
+ */
+function commerce_line_item_configure_line_item_type($line_item_type) {
+  // Add the default price fields to the line item type.
+  $weight = 0;
+
+  foreach (array('commerce_unit_price' => t('Unit price'), 'commerce_total' => t('Total')) as $field_name => $label) {
+    commerce_price_create_instance($field_name, 'commerce_line_item', $line_item_type['type'], $label, $weight++);
+  }
+
+  // If this line item type specifies a configuration callback...
+  if ($callback = commerce_line_item_type_callback($line_item_type, 'configuration')) {
+    // Invoke it now.
+    $callback($line_item_type);
+  }
+}
+
+/**
+ * Configures line item types defined by other modules that are enabled after
+ * the Line Item module.
+ *
+ * @param $modules
+ *   An array of module names whose line item type fields should be configured;
+ *   if left NULL, will default to all modules that implement
+ *   hook_commerce_line_item_type_info().
+ */
+function commerce_line_item_configure_line_item_fields($modules = NULL) {
+  // If no modules array is passed, recheck the fields for all line item types
+  // defined by enabled modules.
+  if (empty($modules)) {
+    $modules = module_implements('commerce_line_item_type_info');
+  }
+
   // Reset the line item cache to get the default options and callbacks.
   commerce_line_item_types_reset();
 
@@ -438,27 +485,6 @@ function commerce_line_item_type_get_name($type = NULL) {
  */
 function commerce_line_item_type_options_list() {
   return commerce_line_item_type_get_name();
-}
-
-/**
- * Configures a line item type by calling its configuration callback.
- *
- * @param $line_item_type
- *   The fully loaded line item type array to configure.
- */
-function commerce_line_item_configure_line_item_type($line_item_type) {
-  // Add the default price fields to the line item type.
-  $weight = 0;
-
-  foreach (array('commerce_unit_price' => t('Unit price'), 'commerce_total' => t('Total')) as $field_name => $label) {
-    commerce_price_create_instance($field_name, 'commerce_line_item', $line_item_type['type'], $label, $weight++);
-  }
-
-  // If this line item type specifies a configuration callback...
-  if ($callback = commerce_line_item_type_callback($line_item_type, 'configuration')) {
-    // Invoke it now.
-    $callback($line_item_type);
-  }
 }
 
 /**
@@ -891,6 +917,18 @@ function commerce_line_item_field_widget_info() {
     ),
   );
 
+  // Do not show the widget on forms; useful in cases where line item reference
+  // fields will be attached to non-order entities and managed by code.
+  $widgets['commerce_line_item_reference_hidden'] = array(
+    'label' => t('Do not show a widget'),
+    'description' => t('Will not display the line item reference field on forms. Use only if you maintain line item references some other way.'),
+    'field types' => array('commerce_line_item_reference'),
+    'settings' => array(),
+    'behaviors' => array(
+      'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+    ),
+  );
+
   return $widgets;
 }
 
@@ -986,13 +1024,10 @@ function commerce_line_item_field_widget_form(&$form, &$form_state, $field, $ins
         '#value' => $line_item_type,
       );
 
-      // TODO: What would it look like to use the line item type's add form
-      // instead of this custom callback mechanism? Probably better...
-
       // If this type specifies a valid add form callback function...
       if ($callback = commerce_line_item_type_callback($line_item_type, 'add_form')) {
         // Load in the appropriate form elements to the actions array.
-        $element['actions'] += $callback();
+        $element['actions'] += $callback($element, $form_state);
       }
 
       // Add a default save button.
@@ -1040,6 +1075,9 @@ function commerce_line_item_field_widget_form(&$form, &$form_state, $field, $ins
     }
 
     return $element;
+  }
+  elseif ($instance['widget']['type'] == 'commerce_line_item_reference_hidden') {
+    return array();
   }
 }
 
@@ -1131,13 +1169,15 @@ function commerce_line_item_manager_validate($element, &$form_state, $form) {
       // Manually validate the unit price of each line item.
       $unit_price = $form_state['values'][$element['#field_name']][$element['#language']]['line_items'][$line_item_id]['commerce_unit_price'];
       $amount = $unit_price[$element['#language']][0]['amount'];
+      $currency_code = $unit_price[$element['#language']][0]['currency_code'];
 
       // Display an error message for a non-numeric unit price.
       if (!is_numeric($amount)) {
         $name = implode('][', array_merge($element['line_items'][$line_item_id]['commerce_unit_price']['#parents'], array($element['#language'], 0, 'amount')));
         form_set_error($name, 'You must enter a numeric value for the unit price.');
       }
-      elseif ($amount <> $line_item->commerce_unit_price[$element['#language']][0]['amount']) {
+      elseif ($amount <> $line_item->commerce_unit_price[$element['#language']][0]['amount'] ||
+        $currency_code <> $line_item->commerce_unit_price[$element['#language']][0]['currency_code']) {
         // Otherwise update the unit price amount if it has changed.
         $line_item->commerce_unit_price = $unit_price;
 
@@ -1283,7 +1323,7 @@ function commerce_line_item_rebase_unit_price($line_item) {
 function commerce_line_item_get_properties($line_item, array $options, $name) {
   switch ($name) {
     case 'order':
-      return $line_item->order_id;
+      return !empty($line_item->order_id) ? $line_item->order_id : commerce_order_new();
   }
 }
 

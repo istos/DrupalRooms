@@ -35,14 +35,34 @@ function commerce_product_reference_field_extra_fields() {
       }
 
       foreach ($bundles as $bundle_name) {
-        // Attach "extra fields" to the bundle representing fields on products
-        // that may be visible on the bundle.
+        // Attach extra fields from products that may be visible on the bundle.
+        // We have to call commerce_product_field_extra_fields() directly
+        // instead of using field_info_extra_fields() because of the order in
+        // which these items are rebuilt in the cache for use by "Manage
+        // display" tabs. Otherwise these extra fields will not appear.
+        $product_fields = commerce_product_field_extra_fields();
+
+        foreach ($product_fields['commerce_product'] as $key => $value) {
+          foreach ($value['display'] as $product_extra_field_name => $product_extra_field) {
+            $product_extra_field['label'] = t('Product: @label', array('@label' => $product_extra_field['label']));
+
+            $product_extra_field['display']['default'] = array(
+              'weight' => 0,
+              'visible' => FALSE,
+            );
+
+            $extra[$entity_type][$bundle_name]['display']['product:' . $product_extra_field_name] = $product_extra_field;
+          }
+        }
+
+        // Do the same for fields on products that may be visible on the bundle.
         foreach (field_info_instances('commerce_product') as $product_bundle_name => $product_fields) {
           foreach ($product_fields as $product_field_name => $product_field) {
             $extra[$entity_type][$bundle_name]['display']['product:' . $product_field_name] = array(
               'label' => t('Product: @label', array('@label' => $product_field['label'])),
               'description' => t('Field from a referenced product.'),
               'weight' => $product_field['widget']['weight'],
+              'configurable' => TRUE,
             );
           }
         }
@@ -51,6 +71,38 @@ function commerce_product_reference_field_extra_fields() {
   }
 
   return $extra;
+}
+
+/**
+ * Implements hook_field_extra_fields_display_alter().
+ *
+ * This whole implementation is basically a hack because Drupal core does not
+ * allow you to specify default visibility for extra fields. We don't want any
+ * of the Product extra fields to be visible by default in referencing entities,
+ * so we have to alter the display settings at this point until such a time as
+ * the settings have been updated for the given bundle.
+ */
+function commerce_product_reference_field_extra_fields_display_alter(&$displays, $context) {
+  // Load the bundle settings for the current bundle.
+  $bundle_settings = field_bundle_settings($context['entity_type'], $context['bundle']);
+
+  // Loop over the extra fields defined by the Product module.
+  $product_fields = commerce_product_field_extra_fields();
+
+  foreach ($product_fields['commerce_product'] as $key => $value) {
+    foreach ($value['display'] as $product_extra_field_name => $product_extra_field) {
+      // If the current extra field is represented in the $displays array...
+      if (!empty($displays['product:' . $product_extra_field_name])) {
+        // And no data yet exists for the extra field in the bundle settings...
+        if (empty($bundle_settings['extra_fields']['display']['product:' . $product_extra_field_name]) ||
+          (empty($bundle_settings['view_modes'][$context['view_mode']]['custom_settings']) && empty($bundle_settings['extra_fields']['display']['product:' . $product_extra_field_name]['default'])) ||
+          (!empty($bundle_settings['view_modes'][$context['view_mode']]['custom_settings']) && empty($bundle_settings['extra_fields']['display']['product:' . $product_extra_field_name][$context['view_mode']]))) {
+          // Default the extra field to be invisible.
+          $displays['product:' . $product_extra_field_name]['visible'] = FALSE;
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -77,7 +129,9 @@ function commerce_product_reference_form_field_ui_field_edit_form_alter(&$form, 
  * Implements hook_form_FORM_ID_alter().
  *
  * Override the field manage display screen to add a description to the fields
- * we embed into the target node from the product.
+ * we embed into the target node from the product. Also implements the same hack
+ * we had to use in commerce_product_reference_field_extra_fields_display_alter()
+ * to default product extra fields to be hidden.
  */
 function commerce_product_reference_form_field_ui_display_overview_form_alter(&$form, &$form_state) {
   if (!module_exists('commerce_product_ui')) {
@@ -86,12 +140,34 @@ function commerce_product_reference_form_field_ui_display_overview_form_alter(&$
 
   $entity_type = $form['#entity_type'];
   $bundle = $form['#bundle'];
+  $view_mode = $form['#view_mode'];
 
+  // Load the bundle settings for the current bundle.
+  $bundle_settings = field_bundle_settings($entity_type, $bundle);
+
+  // Loop over the extra fields defined by the Product Reference module for this
+  // entity to set help text and make sure any extra field derived from product
+  // fields to be hidden by default.
   $product_fields = commerce_product_reference_field_extra_fields();
 
   if (isset($product_fields[$entity_type][$bundle])) {
     foreach ($product_fields[$entity_type][$bundle]['display'] as $field_name => $field) {
-      $form['fields'][$field_name]['format']['type']['#description'] = t('Modify the settings for this field on the <a href="@url">product display configuration</a>.', array('@url' => url('admin/commerce/products/types')));
+      // If the extra field has configurable settings, add a help text for it.
+      if (!empty($field['configurable'])) {
+        $form['fields'][$field_name]['format']['type']['#description'] = t('Modify the settings for this field on the <a href="!url">product display configuration</a>.', array('!url' => url('admin/commerce/products/types')));
+      }
+      else {
+        // Otherwise just mention it as visibility settings.
+        $form['fields'][$field_name]['format']['type']['#description'] = t('The visibility of this field may also need to be toggled in the <a href="!url">product display configuration</a>.', array('!url' => url('admin/commerce/products/types')));
+
+        // If no data yet exists for the extra field in the bundle settings...
+        if (empty($bundle_settings['extra_fields']['display'][$field_name]) ||
+          (empty($bundle_settings['view_modes'][$view_mode]['custom_settings']) && empty($bundle_settings['extra_fields']['display'][$field_name]['default'])) ||
+          (!empty($bundle_settings['view_modes'][$view_mode]['custom_settings']) && empty($bundle_settings['extra_fields']['display'][$field_name][$view_mode]))) {
+          // Default it to be hidden.
+          $form['fields'][$field_name]['format']['type']['#default_value'] = 'hidden';
+        }
+      }
     }
   }
 }
@@ -197,6 +273,7 @@ function commerce_product_reference_entity_view($entity, $entity_type, $view_mod
   list($id, $vid, $bundle) = entity_extract_ids($entity_type, $entity);
 
   $instances = field_info_instances($entity_type, $bundle);
+  $reference_view_mode = $entity_type . '_' . $view_mode;
 
   // Loop through product reference fields to see if any exist on this entity
   // bundle that is either hidden or displayed with the Add to Cart form display
@@ -209,6 +286,17 @@ function commerce_product_reference_entity_view($entity, $entity_type, $view_mod
       }
       else {
         $product = $wrapper->{$field_name}->get(0)->value();
+
+        // If the product is disabled, attempt to find one that is active and
+        // use that as the default product instead.
+        if (!empty($product) && $product->status == 0) {
+          foreach ($wrapper->{$field_name} as $delta => $product_wrapper) {
+            if ($product_wrapper->status->value() != 0) {
+              $product = $product_wrapper->value();
+              break;
+            }
+          }
+        }
       }
 
       // If we found a product and the reference field enables field injection...
@@ -223,17 +311,66 @@ function commerce_product_reference_entity_view($entity, $entity_type, $view_mod
         // Loop through the fields on the referenced product's type.
         foreach (field_info_instances('commerce_product', $product->type) as $product_field_name => $product_field) {
           // Add the product field to the entity's content array.
-          $entity->content['product:' . $product_field_name] = field_view_field('commerce_product', $product, $product_field_name, $entity_type . '_' . $view_mode, $langcode);
+          $entity->content['product:' . $product_field_name] = field_view_field('commerce_product', $product, $product_field_name, $reference_view_mode, $langcode);
 
           // For multiple value references, add context information so the cart
           // form can do dynamic replacement of fields.
           if ($field['cardinality'] != 1) {
-            $class = array($entity_type, $id, 'product', $product_field_name);
+            // Construct an array of classes that will be used to theme and
+            // target the rendered field for AJAX replacement.
+            $classes = array(
+              'commerce-product-field',
+              drupal_html_class('commerce-product-field-' . $product_field_name),
+              drupal_html_class('field-' . $product_field_name),
+              drupal_html_class(implode('-', array($entity_type, $id, 'product', $product_field_name))),
+            );
 
             $entity->content['product:' . $product_field_name] += array(
-              '#prefix' => '<span class="' . drupal_html_class(implode('-', $class)) . '">',
-              '#suffix' => '</span>',
+              '#prefix' => '<div class="' . implode(' ', $classes) . '">',
+              '#suffix' => '</div>',
             );
+          }
+        }
+
+        // Attach "extra fields" to the bundle representing all the extra fields
+        // currently attached to products.
+        foreach (field_info_extra_fields('commerce_product', $product->type, 'display') as $product_extra_field_name => $product_extra_field) {
+          $display = field_extra_fields_get_display('commerce_product', $product->type, $reference_view_mode);
+
+          // Only include extra fields that specify a theme function and that
+          // are visible on the current view mode.
+          if (!empty($product_extra_field['theme']) &&
+            !empty($display[$product_extra_field_name]['visible'])) {
+            // Add the product extra field to the entity's content array.
+            $variables = array(
+              $product_extra_field_name => $product->{$product_extra_field_name},
+              'label' => $product_extra_field['label'] . ':',
+              'product' => $product,
+            );
+
+            $entity->content['product:' . $product_extra_field_name] = array(
+              '#markup' => theme($product_extra_field['theme'], $variables),
+              '#attached' => array(
+                'css' => array(drupal_get_path('module', 'commerce_product') . '/theme/commerce_product.css'),
+              ),
+            );
+
+            // For multiple value references, add context information so the cart
+            // form can do dynamic replacement of fields.
+            if ($field['cardinality'] != 1) {
+              // Construct an array of classes that will be used to theme and
+              // target the rendered field for AJAX replacement.
+              $classes = array(
+                'commerce-product-extra-field',
+                drupal_html_class('commerce-product-extra-field-' . $product_extra_field_name),
+                drupal_html_class(implode('-', array($entity_type, $id, 'product', $product_extra_field_name))),
+              );
+
+              $entity->content['product:' . $product_extra_field_name] += array(
+                '#prefix' => '<div class="' . implode(' ', $classes) . '">',
+                '#suffix' => '</div>',
+              );
+            }
           }
         }
       }
@@ -396,6 +533,12 @@ function commerce_product_reference_field_formatter_view($entity_type, $entity, 
     $product_ids[$item['product_id']] = $item['product_id'];
   }
 
+  // Exit now if we didn't find any product IDs.
+  if (empty($product_ids)) {
+    return;
+  }
+
+  // Load the referenced products.
   $products = commerce_product_load_multiple($product_ids, array('status' => 1));
 
   switch ($display['type']) {
@@ -544,7 +687,9 @@ function commerce_product_reference_field_widget_form(&$form, &$form_state, $fie
     $products = commerce_product_load_multiple($product_ids);
 
     foreach ($product_ids as $product_id) {
-      $skus[] = $products[$product_id]->sku;
+      if (!empty($products[$product_id])) {
+        $skus[] = $products[$product_id]->sku;
+      }
     }
 
     return $element + array(
@@ -552,7 +697,6 @@ function commerce_product_reference_field_widget_form(&$form, &$form_state, $fie
       '#default_value' => implode(', ', $skus),
       '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $instance['entity_type'] . '/' . $field['field_name'] . '/' . $instance['bundle'],
       '#size' => $instance['widget']['settings']['size'],
-      '#maxlength' => 1024,
       '#element_validate' => array('commerce_product_reference_autocomplete_validate'),
     );
   }
@@ -599,11 +743,11 @@ function commerce_product_reference_field_widget_error($element, $error) {
 /**
  * Implements hook_options_list().
  */
-function commerce_product_reference_options_list($field) {
+function commerce_product_reference_options_list($field, $instance = NULL) {
   $options = array();
 
   // Loop through all product matches.
-  foreach (commerce_product_match_products($field) as $product_id => $data) {
+  foreach (commerce_product_match_products($field, $instance) as $product_id => $data) {
     // Add them to the options list in optgroups by product type.
     $name = check_plain(commerce_product_type_get_name($data['type']));
     $options[$name][$product_id] = t('@sku: @title', array('@sku' => $data['sku'], '@title' => $data['title']));
@@ -803,31 +947,19 @@ function commerce_product_line_item_title($line_item) {
 
 /**
  * Returns the elements necessary to add a product line item through a line item
- *   manager widget.
+ * manager widget.
  */
-function commerce_product_line_item_add_form() {
+function commerce_product_line_item_add_form($element, &$form_state) {
   $form = array();
-  $options = array();
 
-  // Get a an options list
-  $options = commerce_product_reference_options_list(array('field_name' => 'line_item_product_selector'));
-
-  // Ensure we have a list of options before we present a select list.
-  if (!empty($options)) {
-    $form['product_id'] = array(
-      '#type' => 'select',
-      '#title' => t('Product'),
-      '#options' => $options,
-    );
-  }
-  else {
-    // Take over the default save button, with an error message.
-    $form['save_line_item'] = array(
-      '#prefix' => '<div>',
-      '#markup' => t('You must add products before you can add a product line item.'),
-      '#suffix' => '</div>',
-    );
-  }
+  $form['product_sku'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Product SKU'),
+    '#description' => t('Enter the SKU of the product to add to the order.'),
+    '#autocomplete_path' => 'commerce_product/autocomplete/commerce_product/line_item_product_selector/product',
+    '#size' => 60,
+    '#maxlength' => 255,
+  );
 
   return $form;
 }
@@ -850,10 +982,13 @@ function commerce_product_line_item_add_form() {
  */
 function commerce_product_line_item_add_form_submit(&$line_item, $element, &$form_state, $form) {
   // Load the selected product.
-  $product = commerce_product_load($element['actions']['product_id']['#value']);
-
-  // Populate the line item with the product data.
-  commerce_product_line_item_populate($line_item, $product);
+  if ($product = commerce_product_load_by_sku($element['actions']['product_sku']['#value'])) {
+    // Populate the line item with the product data.
+    commerce_product_line_item_populate($line_item, $product);
+  }
+  else {
+    return t('You have entered an invalid product SKU.');
+  }
 }
 
 /**
@@ -987,7 +1122,7 @@ function commerce_product_reference_property_info_callback(&$info, $entity_type,
 
   $property['type'] = ($field['cardinality'] != 1) ? 'list<commerce_product>' : 'commerce_product';
   $property['options list'] = 'entity_metadata_field_options_list';
-  $propery['getter callback'] = 'entity_metadata_field_property_get';
+  $property['getter callback'] = 'entity_metadata_field_property_get';
   $property['setter callback'] = 'entity_metadata_field_property_set';
   $property['property info'] = commerce_product_reference_field_data_property_info();
 

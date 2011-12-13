@@ -22,7 +22,7 @@ class CommerceProductEntityController extends DrupalCommerceEntityController {
    *   A product object with all default fields initialized.
    */
   public function create(array $values = array()) {
-    return (object) ($values + array(
+    $values += array(
       'product_id' => '',
       'is_new' => TRUE,
       'sku' => '',
@@ -31,7 +31,9 @@ class CommerceProductEntityController extends DrupalCommerceEntityController {
       'status' => 1,
       'created' => '',
       'changed' => '',
-    ));
+    );
+
+    return parent::create($values);
   }
 
   /**
@@ -55,6 +57,26 @@ class CommerceProductEntityController extends DrupalCommerceEntityController {
       // Set the creation timestamp if not set, for new entities.
       if (empty($entity->created)) {
         $entity->created = REQUEST_TIME;
+      }
+    }
+
+    // Remove price components from any price fields attached to the product.
+    // Default price components should instead be rebuilt each load using
+    // hook_field_attach_load().
+    foreach (field_info_instances('commerce_product', $entity->type) as $field_name => $instance) {
+      // Load the instance's field data.
+      $field = field_info_field($instance['field_name']);
+
+      // If the instance is a price field with data on this product...
+      if ($field['type'] == 'commerce_price' && !empty($entity->{$field_name})) {
+        // Remove the price components from every price value.
+        foreach ($entity->{$field_name} as $langcode => &$items) {
+          foreach ($items as $delta => &$item) {
+            if (!empty($item['data'])) {
+              $item['data']['components'] = array();
+            }
+          }
+        }
       }
     }
 
@@ -101,7 +123,7 @@ class CommerceProductEntityController extends DrupalCommerceEntityController {
         return FALSE;
       }
 
-      parent::delete($product_ids, $transaction);
+      parent::delete(array_keys($products), $transaction);
       return TRUE;
     }
     else {
@@ -128,7 +150,7 @@ class CommerceProductEntityController extends DrupalCommerceEntityController {
   public function buildContent($product, $view_mode = 'full', $langcode = NULL, $content = array()) {
     // Prepare a reusable array representing the CSS file to attach to the view.
     $attached = array(
-      'css' => array(drupal_get_path('module', 'commerce_product_ui') . '/theme/commerce_product.css'),
+      'css' => array(drupal_get_path('module', 'commerce_product') . '/theme/commerce_product.css'),
     );
 
     // Add the default fields inherent to the product entity.

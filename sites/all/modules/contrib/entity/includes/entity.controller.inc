@@ -192,6 +192,20 @@ class EntityAPIController extends DrupalDefaultEntityController implements Entit
       }
     }
 
+    // Support the entitycache module if activated.
+    if (!empty($this->entityInfo['entity cache']) && !$revision_id && $ids && !$conditions) {
+      $cached_entities = EntityCacheControllerHelper::entityCacheGet($this, $ids, $conditions);
+      // If any entities were loaded, remove them from the ids still to load.
+      $ids = array_diff($ids, array_keys($cached_entities));
+      $entities += $cached_entities;
+
+      // Add loaded entities to the static cache if we are not loading a
+      // revision.
+      if ($this->cache && !empty($cached_entities) && !$revision_id) {
+        $this->cacheSet($cached_entities);
+      }
+    }
+
     // Load any remaining entities from the database. This is the case if $ids
     // is set to FALSE (so we load all entities), if there are any ids left to
     // load or if loading a revision.
@@ -231,6 +245,12 @@ class EntityAPIController extends DrupalDefaultEntityController implements Entit
       $entities += $queried_entities;
     }
 
+    // Entitycache module support: Add entities to the entity cache if we are
+    // not loading a revision.
+    if (!empty($this->entityInfo['entity cache']) && !empty($queried_entities) && !$revision_id) {
+      EntityCacheControllerHelper::entityCacheSet($this, $queried_entities);
+    }
+
     if ($this->cache) {
       // Add entities to the cache if we are not loading a revision.
       if (!empty($queried_entities) && !$revision_id) {
@@ -256,6 +276,10 @@ class EntityAPIController extends DrupalDefaultEntityController implements Entit
   public function resetCache(array $ids = NULL) {
     $this->cacheComplete = FALSE;
     parent::resetCache($ids);
+    // Support the entitycache module.
+    if (!empty($this->entityInfo['entity cache'])) {
+      EntityCacheControllerHelper::resetEntityCache($this, $ids);
+    }
   }
 
   /**

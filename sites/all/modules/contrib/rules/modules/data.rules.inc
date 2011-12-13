@@ -35,6 +35,7 @@ function rules_data_action_info() {
         'type' => '*',
         'label' => t('Value'),
         'description' => t('The new value to set for the specified data.'),
+        'allow null' => TRUE,
         'optional' => TRUE,
       ),
     ),
@@ -208,7 +209,7 @@ function rules_action_data_set_validate(RulesAbstractPlugin $element) {
   $element->settings += array('data:select' => NULL);
   $info = $element->applyDataSelector($element->settings['data:select'])->info();
   if (strpos($element->settings['data:select'], ':') !== FALSE && empty($info['setter callback'])) {
-    throw new RulesException("The selected data property doesn't support writing.", array(), array($element, 'parameter', 'data'));
+    throw new RulesIntegrityException(t("The selected data property doesn't support writing."), array($element, 'parameter', 'data'));
   }
 }
 
@@ -264,7 +265,7 @@ function rules_action_data_calc_form_alter(&$form, &$form_state, $options, Rules
  */
 function rules_action_create_type_validate($element) {
   if (!isset($element->settings['type'])) {
-    throw new RulesException('Invalid type specified.', array(), array($element, 'parameter', 'type'));
+    throw new RulesIntegrityException(t('Invalid type specified.'), array($element, 'parameter', 'type'));
   }
 }
 
@@ -365,7 +366,7 @@ function rules_action_data_list_add_positions() {
  * Options list callback for variable add action.
  */
 function rules_data_action_variable_add_options() {
-  return RulesPluginUI::getOptions('data_info');
+  return RulesPluginUI::getOptions('data');
 }
 
 /**
@@ -419,6 +420,7 @@ function rules_data_condition_info() {
           'type' => '*',
           'label' => t('Data to compare'),
           'description' => t('The data to be compared, specified by using a data selector, e.g. "node:author:name".'),
+          'allow null' => TRUE,
         ),
         'op' => array(
           'type' => 'text',
@@ -433,6 +435,7 @@ function rules_data_condition_info() {
           'type' => '*',
           'label' => t('Data value'),
           'description' => t('The value to compare the data with.'),
+          'allow null' => TRUE,
         ),
       ),
       'group' => t('Data'),
@@ -471,6 +474,31 @@ function rules_data_condition_info() {
         'info_alter' => 'rules_data_list_info_alter',
         'form_alter' => 'rules_data_list_form_alter',
       ),
+    ),
+    'text_matches'  => array(
+      'label' => t('Text comparison'),
+      'parameter' => array(
+        'text' => array(
+          'type' => 'text',
+          'label' => t('Text'),
+          'restriction' => 'selector',
+        ),
+        'match' => array(
+          'type' => 'text',
+          'label' => t('Matching text'),
+        ),
+        'operation' => array(
+          'type' => 'text',
+          'label' => t('Comparison operation'),
+          'options list' => 'rules_data_text_comparison_operation_list',
+          'restriction' => 'input',
+          'default value' => 'contains',
+          'optional' => TRUE,
+          'description' => t('In case the comparison operation @regex is selected, the matching pattern will be interpreted as a <a href="@regex-wikipedia">regular expression</a>.  Tip: <a href="@RegExr">RegExr: Online Regular Expression Testing Tool</a> is helpful for learning, writing, and testing Regular Expressions.', array('@regex-wikipedia' => 'http://en.wikipedia.org/wiki/Regular_expression', '@RegExr' => 'http://gskinner.com/RegExr/', '@regex' => t('regular expression'))),
+        ),
+      ),
+      'group' => t('Data'),
+      'base' => 'rules_data_text_comparison',
     ),
   );
 }
@@ -553,6 +581,18 @@ function rules_condition_data_is_operator_options() {
     '<' => t('is lower than'),
     '>' => t('is greater than'),
     'contains' => t('contains'),
+  );
+}
+
+/**
+ * Options list callback for condition text_matches.
+ */
+function rules_data_text_comparison_operation_list() {
+  return array(
+    'contains' => t('contains'),
+    'starts' => t('starts with'),
+    'ends' => t('ends with'),
+    'regex' => t('regular expression'),
   );
 }
 

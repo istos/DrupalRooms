@@ -135,7 +135,7 @@ function commerce_checkout_help($path, $arg) {
   switch ($path) {
     case 'admin/commerce/config/checkout':
     case 'admin/commerce/config/checkout/form':
-      return t('Use the table below to build your checkout form using the available checkout panes defined by modules enabled on your site. You may configure the checkout pane settings using the operations links below. You may also add additional pages to the checkout process using the tab above and edit them using the operations links below.');
+      return t('Use the table below to build your checkout form using the available checkout panes and pages defined by modules enabled on your site. You may configure the checkout pane settings using the operations links below.');
 
     case 'admin/commerce/config/checkout/rules':
       return t('When a customer advances to the checkout completion page, rules reacting on the <em>Completing the checkout process</em> are evaluated. Default rules handle standard tasks like updating the order status, sending order e-mails, and creating accounts for anonymous users. You can edit these or add additional rules to customize your checkout workflow.');
@@ -155,22 +155,17 @@ function commerce_checkout_theme() {
       'render element' => 'form',
       'file' => 'includes/commerce_checkout.pages.inc',
     ),
+    'commerce_checkout_help' => array(
+      'variables' => array('help' => NULL),
+      'path' => drupal_get_path('module', 'commerce_checkout') . '/theme',
+      'template' => 'commerce-checkout-help',
+    ),
+    'commerce_checkout_errors_message' => array(
+      'variables' => array('label' => NULL, 'message' => NULL),
+      'path' => drupal_get_path('module', 'commerce_checkout') . '/theme',
+      'template' => 'commerce-checkout-errors-message',
+    ),
   );
-}
-
-/**
- * Implements hook_entity_property_info_alter().
- */
-function commerce_checkout_entity_property_info_alter(&$info) {
-  // TODO: Remove this once http://drupal.org/node/1044332 is fixed.
-  if (empty($info['user']['properties']['status'])) {
-    $info['user']['properties']['status'] = array(
-      'label' => t("Status"),
-      'description' => t("Whether the user is active(1) or blocked(0)."),
-      'setter callback' => 'entity_property_verbatim_set',
-      'type' => 'integer',
-    );
-  }
 }
 
 /**
@@ -720,7 +715,19 @@ function commerce_checkout_page_access($checkout_page, $order) {
       if (!$current_page['buttons']) {
         return FALSE;
       }
-      $current_page = $pages[$pages[$current_page['page_id']]['prev_page']];
+
+      // Look for a previous page ID.
+      $prev_page_id = $current_page['prev_page'];
+
+      // If we cannot find one, do not allow access to the current page, causing
+      // a redirect to the order's current status. This edge case will occur
+      // when a checkout page is removed and a user tries to access an earlier
+      // page for an order that was set to the removed page's status.
+      if (empty($prev_page_id)) {
+        return FALSE;
+      }
+
+      $current_page = $pages[$prev_page_id];
     }
     while ($current_page['page_id'] != $checkout_page['page_id']);
   }

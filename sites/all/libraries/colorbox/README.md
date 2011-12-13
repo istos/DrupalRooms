@@ -1,10 +1,24 @@
-## DEMONSTRATION AND INSTRUCTIONS/API:
-http://colorpowered.com/colorbox/
-
-## QUESTIONS?
-See: http://colorpowered.com/colorbox/#help
+## About ColorBox:
+A customizable lightbox plugin for jQuery.  See the [project page](http://jacklmoore.com/colorbox/) for documentation and a demonstration, and the [FAQ](http://jacklmoore.com/colorbox/faq/) for solutions and examples to common issues.  Released under the [MIT license](http://www.opensource.org/licenses/mit-license.php).
 
 ## Changelog:
+
+### Version 1.3.19 - December 08 2011
+Files Changed:jquery.colorbox.js/jquery.colorbox-min.js, colorbox.css (all)
+
+* Fixed bug related to using the 'fixed' property.
+* Optimized the setup procedure to be more efficient.
+* Removed $.colorbox.init() as it will no longer be needed (will self-init when called).
+* Removed use of $.browser.
+
+### Version 1.3.18 - October 07 2011
+Files Changed:jquery.colorbox.js/jquery.colorbox-min.js, colorbox.css (all) and example 1's controls.png
+
+* Fixed a regression where Flash content displayed in ColorBox would be reloaded if the browser window was resized.
+* Added safety check to make sure that ColorBox's markup is only added to the DOM a single time, even if $.colorbox.init() is called multiple times.  This will allow site owners to manually initialize ColorBox if they need it before the DOM has finished loading.
+* Updated the example index.html files to be HTML5 compliant.
+* Changed the slideshow behavior so that it immediately moves to the next slide when the slideshow is started.
+* Minor regex bugfix to allow automatic detection of image URLs that include fragments.
 
 ### Version 1.3.17 - May 11 2011
 Files Changed:jquery.colorbox.js/jquery.colorbox-min.js

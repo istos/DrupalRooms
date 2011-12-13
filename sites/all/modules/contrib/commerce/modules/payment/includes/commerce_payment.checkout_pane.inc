@@ -5,6 +5,20 @@
  * Callback functions for the Payment module's checkout panes.
  */
 
+/**
+ * Checkout pane callback: returns the payment pane's settings form.
+ */
+function commerce_payment_pane_settings_form($checkout_pane) {
+  $form = array();
+
+  $form['commerce_payment_pane_require_method'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Require a payment method at all times, preventing checkout if none is available.'),
+    '#default_value' => variable_get('commerce_payment_pane_require_method', FALSE),
+  );
+
+  return $form;
+}
 
 /**
  * Payment pane: form callback.
@@ -32,14 +46,15 @@ function commerce_payment_pane_checkout_form($form, &$form_state, $checkout_pane
 
   // If no payment methods were found, return the empty form.
   if (empty($options)) {
-    return $pane_form;
+    if (!variable_get('commerce_payment_pane_require_method', FALSE)) {
+      return $pane_form;
+    }
+    else {
+      $pane_form['message'] = array(
+        '#markup' => '<div>' . t('Unfortunately we could not find any suitable payment methods, and we require a payment method to complete checkout.') . '<br /><strong>' . t('Please contact us to resolve any issues with your order.') . '</strong></div>',
+      );
+    }
   }
-
-  // Add the payment CSS in case any elements appear needing the styling.
-  $pane_form['#attached'] = array(
-    'css' => array(drupal_get_path('module', 'commerce_payment') . '/theme/commerce_payment.css'),
-  );
-
 
   // Store the payment methods in the form for validation purposes.
   $pane_form['payment_methods'] = array(
@@ -107,33 +122,42 @@ function commerce_payment_pane_checkout_form_details_refresh($form, $form_state)
  * Payment pane: validation callback.
  */
 function commerce_payment_pane_checkout_form_validate($form, &$form_state, $checkout_pane, $order) {
-  $pane_form = $form[$checkout_pane['pane_id']];
-  $pane_values = $form_state['values'][$checkout_pane['pane_id']];
+  $pane_id = $checkout_pane['pane_id'];
 
-  // Only attempt validation if there were payment methods available.
-  if ($pane_values['payment_methods']) {
-    // If the selected payment method was changed...
-    if ($pane_values['payment_method'] != $pane_form['payment_method']['#default_value']) {
-      // And the newly selected method has a valid form callback...
-      if ($payment_method = commerce_payment_method_instance_load($pane_values['payment_method'])) {
-        if (commerce_payment_method_callback($payment_method, 'submit_form')) {
-          // Fail validation so the form is rebuilt to include the payment method
-          // specific form elements.
-          return FALSE;
+  // Only attempt validation if we actually had payment methods on the form.
+  if (!empty($form[$pane_id]) && !empty($form_state['values'][$pane_id])) {
+    $pane_form = $form[$pane_id];
+    $pane_values = $form_state['values'][$pane_id];
+
+    // Only attempt validation if there were payment methods available.
+    if (!empty($pane_values['payment_methods'])) {
+      // If the selected payment method was changed...
+      if ($pane_values['payment_method'] != $pane_form['payment_method']['#default_value']) {
+        // And the newly selected method has a valid form callback...
+        if ($payment_method = commerce_payment_method_instance_load($pane_values['payment_method'])) {
+          if (commerce_payment_method_callback($payment_method, 'submit_form')) {
+            // Fail validation so the form is rebuilt to include the payment method
+            // specific form elements.
+            return FALSE;
+          }
         }
       }
+
+      // Delegate validation to the payment method callback.
+      $payment_method = commerce_payment_method_instance_load($pane_values['payment_method']);
+
+      if ($callback = commerce_payment_method_callback($payment_method, 'submit_form_validate')) {
+        $result = $callback($payment_method, $pane_form['payment_details'], $pane_values['payment_details'], $order, array($checkout_pane['pane_id'], 'payment_details'));
+
+        // To prevent payment method validation routines from having to return TRUE
+        // explicitly, only return FALSE if it was specifically returned.  Otherwise
+        // default to TRUE.
+        return $result === FALSE ? FALSE : TRUE;
+      }
     }
-
-    // Delegate validation to the payment method callback.
-    $payment_method = commerce_payment_method_instance_load($pane_values['payment_method']);
-
-    if ($callback = commerce_payment_method_callback($payment_method, 'submit_form_validate')) {
-      $result = $callback($payment_method, $pane_form['payment_details'], $pane_values['payment_details'], $order, array($checkout_pane['pane_id'], 'payment_details'));
-
-      // To prevent payment method validation routines from having to return TRUE
-      // explicitly, only return FALSE if it was specifically returned.  Otherwise
-      // default to TRUE.
-      return $result === FALSE ? FALSE : TRUE;
+    elseif (variable_get('commerce_payment_pane_require_method', FALSE)) {
+      drupal_set_message(t('You cannot complete checkout without submitting payment. Please contact us if an error continues to prevent you from seeing valid payment methods for your order.'), 'error');
+      return FALSE;
     }
   }
 
@@ -145,22 +169,27 @@ function commerce_payment_pane_checkout_form_validate($form, &$form_state, $chec
  * Payment pane: submit callback.
  */
 function commerce_payment_pane_checkout_form_submit($form, &$form_state, $checkout_pane, $order) {
-  $pane_form = $form[$checkout_pane['pane_id']];
-  $pane_values = $form_state['values'][$checkout_pane['pane_id']];
+  $pane_id = $checkout_pane['pane_id'];
 
-  // Only process if there were payment methods available.
-  if ($pane_values['payment_methods']) {
-    $order->data['payment_method'] = $pane_values['payment_method'];
+  // Only submit if we actually had payment methods on the form.
+  if (!empty($form[$pane_id]) && !empty($form_state['values'][$pane_id])) {
+    $pane_form = $form[$pane_id];
+    $pane_values = $form_state['values'][$pane_id];
 
-    // If we can calculate a single order total for the order...
-    if ($balance = commerce_payment_order_balance($order)) {
-      // Delegate submit to the payment method callback.
-      $payment_method = commerce_payment_method_instance_load($pane_values['payment_method']);
+    // Only process if there were payment methods available.
+    if ($pane_values['payment_methods']) {
+      $order->data['payment_method'] = $pane_values['payment_method'];
 
-      if ($callback = commerce_payment_method_callback($payment_method, 'submit_form_submit')) {
-        // If payment fails, rebuild the checkout form without progressing.
-        if ($callback($payment_method, $pane_form['payment_details'], $pane_values['payment_details'], $order, $balance) === FALSE) {
-          $form_state['rebuild'] = TRUE;
+      // If we can calculate a single order total for the order...
+      if ($balance = commerce_payment_order_balance($order)) {
+        // Delegate submit to the payment method callback.
+        $payment_method = commerce_payment_method_instance_load($pane_values['payment_method']);
+
+        if ($callback = commerce_payment_method_callback($payment_method, 'submit_form_submit')) {
+          // If payment fails, rebuild the checkout form without progressing.
+          if ($callback($payment_method, $pane_form['payment_details'], $pane_values['payment_details'], $order, $balance) === FALSE) {
+            $form_state['rebuild'] = TRUE;
+          }
         }
       }
     }

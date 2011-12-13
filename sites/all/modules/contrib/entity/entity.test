@@ -265,6 +265,64 @@ class EntityAPITestCase extends DrupalWebTestCase {
     // The entity class adds the user name to the output. Verify it is there.
     $this->assertTrue(strpos($output, format_username($user1)) !== FALSE, 'Entity has been rendered');
   }
+
+  /**
+   * Test uninstall of the entity_test module.
+   */
+  function testUninstall() {
+    // Add a test type and add a field instance, uninstall, then re-install and
+    // make sure the field instance can be re-created.
+    $test_type = entity_create('entity_test_type', array(
+      'name' => 'test',
+      'label' => 'label',
+      'weight' => 0,
+    ));
+    $test_type->save();
+
+    $field = array(
+      'field_name' => 'field_test_fullname',
+      'type' => 'text',
+      'cardinality' => 1,
+      'translatable' => FALSE,
+    );
+    field_create_field($field);
+
+    $instance = array(
+      'entity_type' => 'entity_test',
+      'field_name' => 'field_test_fullname',
+      'bundle' => 'test',
+      'label' => 'Full name',
+      'description' => 'Specify your first and last name.',
+      'widget' => array(
+        'type' => 'text_textfield',
+        'weight' => 0,
+      ),
+    );
+    field_create_instance($instance);
+
+    // Uninstallation has to remove all bundles, thus also field instances.
+    module_disable(array('entity_test'));
+    require_once DRUPAL_ROOT . '/includes/install.inc';
+    drupal_uninstall_modules(array('entity_test'));
+
+    // Make sure the instance has been deleted.
+    $instance_read = field_read_instance('entity_test', 'field_test_fullname', 'test', array('include_inactive' => 1));
+    $this->assertFalse((bool) $instance_read, 'Field instance has been deleted.');
+
+    // Ensure re-creating the same instance now works.
+    module_enable(array('entity_test'));
+    $test_type = entity_create('entity_test_type', array(
+      'name' => 'test',
+      'label' => 'label',
+      'weight' => 0,
+    ));
+    $test_type->save();
+    field_create_field($field);
+    field_create_instance($instance);
+
+    $instance_read = field_info_instance('entity_test', 'field_test_fullname', 'test');
+    $this->assertTrue((bool) $instance_read, 'Field instance has been re-created.');
+  }
 }
 
 /**
@@ -919,6 +977,7 @@ class EntityMetadataIntegrationTestCase extends DrupalWebTestCase {
   function testUserProperties() {
     $account = $this->drupalCreateUser();
     $account->login = time();
+    $account->access = time();
     $wrapper = entity_metadata_wrapper('user', $account);
     foreach ($wrapper as $key => $value) {
       $this->assertValue($wrapper, $key);
@@ -1152,7 +1211,7 @@ class EntityMetadataIntegrationTestCase extends DrupalWebTestCase {
    * Test making use of an image field.
    */
   function testImageFields() {
-    $file = $this->createFile();
+    $file = $this->createFile('image');
 
     // Just use the image field on the article node.
     $node = $this->drupalCreateNode(array('type' => 'article'));
@@ -1242,14 +1301,12 @@ class EntityMetadataIntegrationTestCase extends DrupalWebTestCase {
     return $vocab;
   }
 
-  protected function createFile() {
-    $filepath = file_destination('temporary://' . $this->randomName(), FILE_EXISTS_REPLACE);
-    file_put_contents($filepath, "content");
-    $this->assertTrue(is_file($filepath), t('The test file exists on the disk.'), 'Create test file');
-    $file = new stdClass();
-    $file->uri = $filepath;
-    $file->filename = basename($file->uri);
-    $file->filemime = 'text/plain';
+  protected function createFile($file_type = 'text') {
+    // Create a managed file.
+    $file = current($this->drupalGetTestFiles($file_type));
+
+    // Set additional file properties and save it.
+    $file->filemime = file_get_mimetype($file->filename);
     $file->uid = 1;
     $file->timestamp = REQUEST_TIME;
     $file->filesize = filesize($file->uri);

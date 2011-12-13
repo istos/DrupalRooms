@@ -14,9 +14,9 @@ configure = admin/commerce/config/order
 ; Simple tests
 files[] = tests/commerce_order_ui.test
 
-; Information added by drupal.org packaging script on 2011-08-23
-version = "7.x-1.0"
+; Information added by drupal.org packaging script on 2011-11-29
+version = "7.x-1.1"
 core = "7.x"
 project = "commerce"
-datestamp = "1314124616"
+datestamp = "1322552155"
 

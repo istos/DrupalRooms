@@ -3,7 +3,7 @@ div.date-views-pager {
   margin-left: auto;
   margin-right: auto;
 }
-div.date-views-pager div {
+div.date-views-pager li {
   float: left;
   text-align: left;
   width: 20%;
