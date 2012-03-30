@@ -1,1 +1,0 @@
-DrupalRooms install profile
