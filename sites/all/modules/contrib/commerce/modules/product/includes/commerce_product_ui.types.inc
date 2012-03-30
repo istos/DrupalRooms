@@ -9,7 +9,7 @@
  * Menu callback: display an overview of available types.
  */
 function commerce_product_ui_types_overview() {
-  drupal_add_css(drupal_get_path('module', 'commerce_product_ui') . '/theme/commerce_product_ui.types.css');
+  drupal_add_css(drupal_get_path('module', 'commerce_product') . '/theme/commerce_product.admin.css');
 
   $header = array(
     t('Name'),
@@ -57,7 +57,7 @@ function theme_product_type_admin_overview($variables) {
   $product_type = $variables['product_type'];
 
   $output = check_plain($product_type['name']);
-  $output .= ' <small> (Machine name: ' . check_plain($product_type['type']) . ')</small>';
+  $output .= ' <small>' . t('(Machine name: @type)', array('@type' => $product_type['type'])) . '</small>';
   $output .= '<div class="description">' . filter_xss_admin($product_type['description']) . '</div>';
 
   return $output;
@@ -120,8 +120,17 @@ function commerce_product_ui_product_type_delete_form_wrapper($type) {
   }
 
   // Don't allow deletion of product types that have products already.
-  if (($count = db_query("SELECT product_id FROM {commerce_product} WHERE type = :product_type", array(':product_type' => $product_type['type']))->rowCount()) > 0) {
+  $query = new EntityFieldQuery();
+
+  $query->entityCondition('entity_type', 'commerce_product', '=')
+    ->entityCondition('bundle', $product_type['type'], '=')
+    ->count();
+
+  $count = $query->execute();
+
+  if ($count > 0) {
     drupal_set_title(t('Cannot delete the %name product type', array('%name' => $product_type['name'])), PASS_THROUGH);
+
     return format_plural($count,
       'There is 1 product of this type. It cannot be deleted.',
       'There are @count products of this type. It cannot be deleted.'

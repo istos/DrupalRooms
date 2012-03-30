@@ -57,30 +57,4 @@ EXDATE:20111223</rule>
 EXDATE:20111223</rule>
     </date_repeat>
   </item>
-  <item>
-    <id>10</id>
-    <title>Empty example</title>
-    <body>This is an example with empty dates.</body>
-    <date></date>
-    <date_range>
-      <from></from>
-      <to></to>
-    </date_range>
-    <datestamp></datestamp>
-    <datestamp_range>
-      <from></from>
-      <to></to>
-    </datestamp_range>
-    <datetime></datetime>
-    <datetime_range>
-      <from></from>
-      <to></to>
-      <timezone>America/Chicago</timezone>
-    </datetime_range>
-    <date_repeat>
-      <date></date>
-      <rule></rule>
-    </date_repeat>
-  </item>
-
 </source_data>

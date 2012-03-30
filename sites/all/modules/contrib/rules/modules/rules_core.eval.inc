@@ -23,14 +23,13 @@ function rules_element_invoke_component($arguments, RulesPlugin $element) {
     $replacements = array('%label' => $component->label(), '@plugin' => $component->plugin());
     // Handle recursion prevention.
     if ($state->isBlocked($component)) {
-      return rules_log('Not evaluating @plugin %label to prevent recursion.', $replacements, RulesLog::INFO, $component);
+      return rules_log('Not evaluating @plugin %label to prevent recursion.', $replacements, RulesLog::INFO);
     }
     $state->block($component);
-    rules_log('Evaluating @plugin %label.', $replacements, RulesLog::INFO, $component, TRUE);
+    rules_log('Evaluating @plugin %label.', $replacements, RulesLog::INFO, TRUE);
     module_invoke_all('rules_config_execute', $component);
 
     // Manually create a new evaluation state and evaluate the component.
-    $args = array_intersect_key($wrapped_args, $component->parameterInfo());
     $new_state = $component->setUpState($wrapped_args);
     $return = $component->evaluate($new_state);
 
@@ -48,11 +47,11 @@ function rules_element_invoke_component($arguments, RulesPlugin $element) {
 
     // Cleanup the state, what saves not mergable variables now.
     $new_state->cleanup();
-    rules_log('Finished evaluation of @plugin %label.', $replacements, RulesLog::INFO, $component, FALSE);
+    rules_log('Finished evaluation of @plugin %label.', $replacements, RulesLog::INFO, FALSE);
     return $return;
   }
   else {
-    throw new RulesEvaluationException('Unable to get the component %name', array('%name' => $info['#config_name']), $element);
+    throw new RulesException('Unable to get the component %name', array('%name' => $info['#config_name']), $element);
   }
 }
 
@@ -117,7 +116,7 @@ class RulesURIInputEvaluator extends RulesDataInputEvaluator {
     elseif (valid_url($uri)) {
       return $uri;
     }
-    throw new RulesEvaluationException('Input evaluation generated an invalid URI.', array(), NULL, RulesLog::WARN);
+    throw new RulesException('Input evaluation generated an invalid URI.', array(), NULL, RulesLog::WARN);
   }
 }
 

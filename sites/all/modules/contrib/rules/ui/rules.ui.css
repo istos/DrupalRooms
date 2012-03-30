@@ -10,7 +10,7 @@
 
 .rules-elements-table ul.action-links {
   margin: 0px;
-  padding: 0;
+  padding-left: 0px;
 }
 
 .rules-elements-table ul.rules-operations li {
@@ -69,62 +69,16 @@ ul.rules-operations-add li {
   margin: 1em 0;
 }
 
-.rules-content-group-integrity-error {
-  color: #df0101;
-}
-
 .rules-debug-log {
-  font: 81.3% "Lucida Grande","Lucida Sans Unicode",sans-serif;
   background-color: #eeeeee;
   border: 1px solid #cccccc;
-  color: #333333;
+  font-color: #333333;
   padding: 5px;
-  margin: 1.5em 0em;
-}
-
-.rules-debug-collapsible-link {
-  position: relative;
-  cursor: pointer;
-
-  /* The span element with the icon which opens the log, has a whitepsace.
-     Since we don't want the user to mark this white space, we prevent this
-     using the this code.*/
-  -moz-user-select: -moz-none;
-  -khtml-user-select: none;
-  -webkit-user-select: none;
-  -o-user-select: none;
-  user-select: none;
-}
-
-.rules-debug-log-head {
-  font-weight: bold;
-}
-
-div.rules-debug-log-head {
-  margin: 0.5em 0em;
-}
-
-.rules-debug-icon-open {
-  position: relative;
-  float: left;
-}
-
-.rules-debug-open-all {
-  position: relative;
-  float: right;
+  margin: 2em;
 }
 
 .rules-debug-log ul {
   padding-left: 2em;
-}
-
-.rules-debug-log .rules-debug-warn {
-  color: #df0101;
-}
-
-.rules-debug-log .rules-debug-error {
-  font-weight: bold;
-  color: #df0101;
 }
 
 #rules-filter-form {
@@ -132,7 +86,7 @@ div.rules-debug-log-head {
 }
 
 .rules-parameter-label {
-  font-style: italic;
+  font-style: italic; 
 }
 
 #rules-plugin-add-help {
@@ -188,3 +142,4 @@ ul.rules-autocomplete .ui-corner-all {
 * html ul.rule-autocomplete{
   height: 23em;
 }
+

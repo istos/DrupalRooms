@@ -36,7 +36,7 @@ function commerce_payment_credit_card_form($fields = array(), $default = array()
   $form['credit_card'] = array(
     '#tree' => TRUE,
     '#attached' => array(
-      'css' => array(drupal_get_path('module', 'commerce_payment') . '/theme/commerce_payment.credit_card.css'),
+      'css' => array(drupal_get_path('module', 'commerce_payment') . '/theme/commerce_payment.theme.css'),
     ),
   );
 
@@ -140,7 +140,7 @@ function commerce_payment_credit_card_form($fields = array(), $default = array()
   if (isset($fields['issue'])) {
     $form['credit_card']['issue'] = array(
       '#type' => 'textfield',
-      '#title' => t('Issue number'),
+      '#title' => t('Issue number', array(), array('context' => 'credit card issue number for card types that require it')),
       '#default_value' => $default['issue'],
       '#attributes' => array('autocomplete' => 'off'),
       '#required' => empty($fields['issue']) ? FALSE : TRUE,

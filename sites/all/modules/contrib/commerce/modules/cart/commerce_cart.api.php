@@ -10,11 +10,20 @@
  * Allows modules to return a shopping cart order ID for a user before the Cart
  * module determines it using its default queries.
  *
+ * Implementations of this hook are executed one at a time, meaning the first
+ * implementation to return a non-NULL value will determine the current cart
+ * order ID for the given user. Acceptable values will be either FALSE to
+ * indicate that the user should not be considered to have a valid cart order or
+ * an order ID to use besides the ID that would be returned by the default
+ * queries in the Cart module.
+ *
  * @param $uid
  *   The uid of the user whose shopping cart order ID should be returned.
  *
  * @return
- *   The order ID or nothing if the function did not find one.
+ * The order ID (if a valid cart was found), FALSE (if the user should have no
+ * current cart), or NULL (if the implementation cannot tell if the user has a
+ * cart or not).
  */
 function hook_commerce_cart_order_id($uid) {
   // No example.
@@ -41,15 +50,34 @@ function hook_commerce_cart_order_id($uid) {
  * @return
  *   FALSE to indicate that an order should not be treated as a cart.
  *
+ * @deprecated since 7.x-1.2, use hook_commerce_cart_order_is_cart_alter() instead.
  * @see commerce_cart_order_is_cart()
+ * @see hook_commerce_cart_order_is_cart_alter()
  */
-function hook_commerce_cart_order_is_cart($order, $is_cart) {
+function hook_commerce_cart_order_is_cart($order, &$is_cart) {
+  // No example.
+}
+
+/**
+ * Alter the cart status of an order.
+ *
+ * When determining if an order should be considered a shopping cart order, the
+ * Cart module provides a simple order status comparison but allows other
+ * modules to make the decision based on some other criteria.
+ *
+ * @param $is_cart
+ *   Boolean indicating whether or not the order should be considered a cart
+ *   order; initialized based on the order status.
+ * @param $order
+ *   The order whose cart status is being determined.
+ */
+function hook_commerce_cart_order_is_cart_alter(&$is_cart, $order) {
   // No example.
 }
 
 /**
  * Allows modules to perform additional processing to convert an anonymous
- *   shopping cart order to an authenticated cart.
+ * shopping cart order to an authenticated cart.
  *
  * When anonymous users login to the site, if they have shopping cart orders,
  * those are converted to authenticated shopping carts. This means their uid and
@@ -108,6 +136,7 @@ function hook_commerce_cart_line_item_refresh($line_item, $order_wrapper) {
  *   The entity metadata wrapper for the order being refreshed.
  *
  * @see commerce_cart_order_refresh()
+ * @see entity_metadata_wrapper()
  */
 function hook_commerce_cart_order_refresh($order_wrapper) {
   // No example.

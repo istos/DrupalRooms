@@ -36,6 +36,20 @@ function colorbox_admin_settings() {
     '#default_value' => variable_get('colorbox_compression_type', 'min'),
   );
 
+  if (module_exists('image')) {
+    $form['colorbox_imagefield'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Image field options (CCK)')
+    );
+    $form['colorbox_imagefield']['colorbox_imagefield_gallery'] = array(
+      '#type' => 'radios',
+      '#title' => t('Image field gallery'),
+      '#default_value' => variable_get('colorbox_imagefield_gallery', 1),
+      '#options' => array(0 => t('Per page gallery'), 1 => t('Per post gallery'), 2 => t('Per field gallery'), 3 => t('No gallery')),
+      '#description' => t('Should the gallery be images within a single field, a single post (default) or all images on the page. The last option disables galleries.'),
+    );
+  }
+
   if (module_exists('image_old')) {
     $form['colorbox_image_module'] = array(
       '#type' => 'fieldset',
@@ -231,26 +245,6 @@ function colorbox_admin_settings() {
     '#size' => 30,
     '#description' => t('Set a maximum height for loaded content. Example: "100%", 500, "500px".'),
   );
-  $form['colorbox_custom_settings']['colorbox_initialwidth'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Initial width'),
-    '#default_value' => variable_get('colorbox_initialwidth', '300'),
-    '#size' => 30,
-    '#description' => t('Set the initial width, prior to any content being loaded. Example: "100%", 500, "500px".'),
-  );
-  $form['colorbox_custom_settings']['colorbox_initialheight'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Initial height'),
-    '#default_value' => variable_get('colorbox_initialheight', '100'),
-    '#size' => 30,
-    '#description' => t('Set the initial height, prior to any content being loaded. Example: "100%", 500, "500px".'),
-  );
-  $form['colorbox_custom_settings']['colorbox_fixed'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Fixed'),
-    '#default_value' => variable_get('colorbox_fixed', 1),
-    '#description' => t('If the ColorBox should be displayed in a fixed position within the visitor\'s viewport or relative to the document.'),
-  );
 
   $form['colorbox_custom_settings']['colorbox_slideshow_settings'] = array(
     '#type' => 'fieldset',
@@ -315,23 +309,23 @@ function colorbox_admin_settings() {
     '#collapsible' => TRUE,
     '#collapsed' => TRUE
   );
-  $form['colorbox_advanced_settings']['colorbox_caption_trim'] = array(
+  $form['colorbox_advanced_settings']['colorbox_title_trim'] = array(
     '#type' => 'radios',
-    '#title' => t('Caption shortening'),
+    '#title' => t('Title shortening'),
     '#options' => array(0 => t('Default'), 1 => t('Yes')),
-    '#default_value' => variable_get('colorbox_caption_trim', 0),
-    '#description' => t('If the caption should be made shorter in the Colorbox to avoid layout problems. The default is to shorten for the example styles, they need it, but not for other styles.'),
+    '#default_value' => variable_get('colorbox_title_trim', 0),
+    '#description' => t('If the title should be made shorter in the Colorbox to avoid layout problems. The default is to shorten for the example styles, they need it, but not for other styles.'),
+    '#prefix' => '<div class="colorbox-title-trim-settings-activate">',
+    '#suffix' => '</div>',
   );
-  $form['colorbox_advanced_settings']['colorbox_caption_trim_length'] = array(
+  $js_hide = variable_get('colorbox_title_trim', 0) ? '' : ' js-hide';
+  $form['colorbox_advanced_settings']['colorbox_title_trim_length'] = array(
     '#type' => 'select',
-    '#title' => t('Caption max length'),
+    '#title' => t('Title max length'),
     '#options' => drupal_map_assoc(array(40, 45, 50, 55, 60, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120)),
-    '#default_value' => variable_get('colorbox_caption_trim_length', 75),
-    '#states' => array(
-      'visible' => array(
-        ':input[name="colorbox_caption_trim"]' => array('value' => '1'),
-      ),
-    ),
+    '#default_value' => variable_get('colorbox_title_trim_length', 75),
+    '#prefix' => '<div class="colorbox-title-trim-settings' . $js_hide . '">',
+    '#suffix' => '</div>',
   );
   $form['colorbox_advanced_settings']['colorbox_pages'] = array(
     '#type' => 'textarea',

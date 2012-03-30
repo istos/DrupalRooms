@@ -4,6 +4,20 @@
  * @file Rules engine module
  */
 
+// Add the rules autoloader, which cares about auto-loading the faces include.
+// @see http://drupal.org/project/faces
+spl_autoload_register('rules_autoload');
+
+/**
+ * Autoload API includes. Note that the code registry autoload is used only
+ * by the providing API module.
+ */
+function rules_autoload($class) {
+  if (stripos($class, 'faces') === 0) {
+    module_load_include('inc', 'rules', 'includes/faces');
+  }
+}
+
 /**
  * Implements hook_init().
  */
@@ -160,56 +174,38 @@ function rules_action_set($variables, $provides = array()) {
  *   An array of placeholder arguments as used by t().
  * @param $priority
  *   A priority as defined by the RulesLog class.
- * @param RulesPlugin $element
- *  (optional) The RulesElement causing the log entry.
- * @param boolean $scope
- *  (optional) This may be used to denote the beginning (TRUE) or the end
- *  (FALSE) of a new execution scope.
+ * @param $scope
+ *   Optionally this may be used to denote the beginning (TRUE) or the end
+ *   (FALSE) of a new execution scope.
  */
-function rules_log($msg, $args = array(), $priority = RulesLog::INFO, RulesPlugin $element = NULL, $scope = NULL) {
+function rules_log($msg, $args = array(), $priority = RulesLog::INFO, $scope = NULL) {
   static $logger;
-  if ($priority >= variable_get('rules_log_errors', RulesLog::WARN)) {
-    $link = NULL;
-    if (isset($element) && isset($element->root()->name)) {
-      $link = l(t('edit configuration'), RulesPluginUI::path($element->root()->name, 'edit', $element));
-    }
-    watchdog('rules', $msg, $args, $priority == RulesLog::WARN ? WATCHDOG_WARNING : WATCHDOG_ERROR, $link);
-  }
-  // Do nothing in case debugging is totally disabled.
-  if (!variable_get('rules_debug_log', FALSE) && !variable_get('rules_debug', FALSE)) {
-    return;
-  }
   if (!isset($logger)) {
     $logger = RulesLog::logger();
   }
-  $path = isset($element) ? RulesPluginUI::path($element->root()->name, 'edit', $element) : NULL;
-  $logger->log($msg, $args, $priority, $scope, $path);
+  $logger->log($msg, $args, $priority, $scope);
 }
 
 /**
- * Fetches module definitions for the given hook name.
- *
+ * Fetches module definitions for the given name
  * Used for collecting events, rules, actions and condtions from other modules.
  *
  * @param $hook
  *   The hook of the definitions to get from invoking hook_rules_{$hook}.
  */
 function rules_fetch_data($hook) {
-  $data = &drupal_static(__FUNCTION__, array());
-
-  if (!isset($data[$hook])) {
-    foreach (module_implements('rules_' . $hook) as $module) {
-      $result = call_user_func($module . '_rules_' . $hook);
-      if (isset($result) && is_array($result)) {
-        foreach ($result as $name => $item) {
-          $item += array('module' => $module);
-          $data[$hook][$name] = $item;
-        }
+  $data = array();
+  foreach (module_implements('rules_' . $hook) as $module) {
+    $result = call_user_func($module . '_rules_' . $hook);
+    if (isset($result) && is_array($result)) {
+      foreach ($result as $name => $item) {
+        $item += array('module' => $module);
+        $data[$name] = $item;
       }
     }
-    drupal_alter('rules_'. $hook, $data[$hook]);
   }
-  return $data[$hook];
+  drupal_alter('rules_'. $hook, $data);
+  return $data;
 }
 
 /**
@@ -250,18 +246,9 @@ function &rules_get_cache($cid = 'data') {
 }
 
 /**
- * Rebuilds the rules cache.
- *
- * This rebuilds the rules 'data' cache and invokes rebuildCache() methods on
- * all plugin classes, which in turn rebuild their own caches or update the
- * main cache. The cache is rebuilt in the order the plugins are defined.
- *
- * Note that building the action/condition info cache triggers loading of all
- * components, thus depends on entity-loading and so syncing entities in code
- * to the database.
- *
- * @see rules_rules_plugin_info()
- * @see entity_defaults_rebuild()
+ * Rebuilds the main rules cache ('data') and invokes rebuildCache() methods on
+ * all mentioned class, which in turn rebuild their own caches or update the
+ * main cache.
  */
 function _rules_rebuild_cache(&$cache) {
   foreach(array('data_info', 'plugin_info') as $hook) {
@@ -302,13 +289,18 @@ function rules_flush_caches() {
 
 /**
  * Clears the rule set cache
+ *
+ * @param $immediate
+ *   If FALSE, the static cache will be kept until the next page
+ *   load. If set to TRUE static caches will be cleared too.
  */
-function rules_clear_cache() {
+function rules_clear_cache($immediate = FALSE) {
   cache_clear_all('*', 'cache_rules', TRUE);
   variable_del('rules_empty_sets');
-  drupal_static_reset('rules_get_cache');
-  drupal_static_reset('rules_fetch_data');
-  entity_get_controller('rules_config')->resetCache();
+  if ($immediate) {
+    drupal_static_reset('rules_get_cache');
+    entity_get_controller('rules_config')->resetCache();
+  }
 }
 
 /**
@@ -386,32 +378,19 @@ function rules_unwrap_data(array $data, $info = array()) {
   foreach ($data as $key => $entry) {
     // If it's a wrapper, unwrap unless specified otherwise.
     if ($entry instanceof EntityMetadataWrapper) {
-      if (!isset($info[$key]['allow null'])) {
-        $info[$key]['allow null'] = FALSE;
+      if (isset($info[$key]) && (!empty($info[$key]['wrapped']) || (is_string($info[$key]['type']) && !empty($cache['data_info'][$info[$key]['type']]['is wrapped'])))) {
+        continue;
       }
-      if (!isset($info[$key]['wrapped'])) {
-        // By default, do not unwrap special data types that are always wrapped.
-        $info[$key]['wrapped'] = (isset($info[$key]['type']) && is_string($info[$key]['type']) && !empty($cache['data_info'][$info[$key]['type']]['is wrapped']));
-      }
-      // Activate the decode option by default if 'sanitize' is not enabled, so
-      // any text is either sanitized or decoded.
-      // @see EntityMetadataWrapper::value()
-      $options = $info[$key] + array('decode' => empty($info[$key]['sanitize']));
-
+      $options = (isset($info[$key]) ? $info[$key] : array()) + array('decode' => empty($info[$key]['sanitize']));
       try {
-        if (!($info[$key]['allow null'] && $info[$key]['wrapped'])) {
-          $value = $entry->value($options);
-
-          if (!$info[$key]['wrapped']) {
-            $data[$key] = $value;
-          }
-          if (!$info[$key]['allow null'] && !isset($value)) {
-            throw new RulesEvaluationException('The variable or parameter %name is empty.', array('%name' => $key));
-          }
-        }
+        $data[$key] = $entry->value($options);
       }
-      catch (EntityMetadataWrapperException $e) {
-        throw new RulesEvaluationException('Unable to get the data value for the variable or parameter %name. Error: !error', array('%name' => $key, '!error' => $e->getMessage()));
+      catch (Exception $e) {
+        // Getting the data value failed.
+        throw new RulesException($e->getMessage());
+      }
+      if (!isset($data[$key]) && empty($info[$key]['allow null'])) {
+        throw new RulesException('The variable or parameter %name is empty.', array('%name' => $key));
       }
     }
   }
@@ -670,6 +649,20 @@ function rules_get_components($label = FALSE, $type = NULL, $conditions = array(
 }
 
 /**
+ * Implement hook_query_TAG_alter().
+ */
+function rules_query_rules_config_load_multiple_alter(QueryAlterableInterface $query) {
+  // Support using 'event' => $name as condition.
+  $conditions =& $query->conditions();
+  foreach ($conditions as &$condition) {
+    if ($condition['field'] == 'base.event') {
+      $query->join('rules_trigger', 'tr', "base.id = tr.id");
+      $condition['field'] = 'tr.event';
+    }
+  }
+}
+
+/**
  * Delete rule configurations from database.
  *
  * @param $ids
@@ -679,34 +672,41 @@ function rules_config_delete(array $ids) {
   return entity_get_controller('rules_config')->delete($ids);
 }
 
+
 /**
- * Ensures the configuration's 'dirty' flag is up to date.
- *
- * @param $update
- *   Whether the dirty flag is also updated in the database if necessary.
+ * Implement hook_rules_config_insert().
  */
-function rules_config_update_dirty_flag($rules_config, $update = TRUE) {
-  $was_dirty = !empty($rules_config->dirty);
-  try {
-    $rules_config->integrityCheck();
-    $rules_config->dirty = FALSE;
-    if ($was_dirty) {
-      $variables = array('%label' => $rules_config->label(), '%name' => $rules_config->name, '@plugin' => $rules_config->plugin());
-      watchdog('rules', 'The @plugin %label (%name) was marked dirty, but passes the integrity check now and is active again.', $variables, WATCHDOG_INFO);
+function rules_rules_config_insert($rule_config) {
+  // If it's an reactive rule write entries in trigger table.
+  if ($rule_config instanceof RulesTriggerableInterface) {
+    foreach ($rule_config->events() as $event) {
+      db_insert('rules_trigger')
+        ->fields(array(
+        'id' => $rule_config->id,
+        'event' => $event,
+      ))
+      ->execute();
     }
   }
-  catch (RulesIntegrityException $e) {
-    $rules_config->dirty = TRUE;
-    if (!$was_dirty) {
-      $variables = array('%label' => $rules_config->label(), '%name' => $rules_config->name, '!message' => $e->getMessage(), '@plugin' => $rules_config->plugin());
-      watchdog('rules', 'The @plugin %label (%name) fails the integrity check and cannot be executed. Error: !message', $variables, WATCHDOG_ERROR);
-    }
+}
+
+/**
+ * Implement hook_rules_config_update().
+ */
+function rules_rules_config_update($rule_config) {
+  if ($rule_config instanceof RulesTriggerableInterface) {
+    rules_rules_config_delete($rule_config);
+    rules_rules_config_insert($rule_config);
   }
-  // Save the updated dirty flag to the database.
-  if ($was_dirty != $rules_config->dirty) {
-    db_update('rules_config')
-      ->fields(array('dirty' => (int) $rules_config->dirty))
-      ->condition('id', $rules_config->id)
+}
+
+/**
+ * Implement hook_rules_config_delete().
+ */
+function rules_rules_config_delete($rule_config) {
+  if ($rule_config instanceof RulesTriggerableInterface) {
+    db_delete('rules_trigger')
+      ->condition('id', $rule_config->id)
       ->execute();
   }
 }
@@ -760,7 +760,7 @@ function rules_invoke_all() {
  *   Pass parameters for the variables provided by this event, as defined in
  *   hook_rules_event_info(). Example given:
  *   @code
- *     rules_invoke_event('node_view', $node, $view_mode);
+ *     rules_invoke_event('node_insert', $node);
  *   @endcode
  *
  * @see rules_invoke_event_by_args()
@@ -773,7 +773,7 @@ function rules_invoke_event() {
   unset($args[0]);
   // For invoking the rules event we directly acccess the global $conf. This is
   // fast without having to introduce another static cache.
-  if (!defined('MAINTENANCE_MODE') && !isset($conf['rules_empty_sets'][$event_name]) && $event = rules_get_cache('event_' . $event_name)) {
+  if (!isset($conf['rules_empty_sets'][$event_name]) && $event = rules_get_cache('event_' . $event_name)) {
     $event->executeByArgs($args);
   }
 }
@@ -790,7 +790,7 @@ function rules_invoke_event() {
  *   passed parameters has to match the order of the specified variables.
  *   Example given:
  *   @code
- *     rules_invoke_event_by_args('node_view', array('node' => $node, 'view_mode' => $view_mode));
+ *     rules_invoke_event('node_insert', array('node' => $node));
  *   @endcode
  *
  * @see rules_invoke_event()
@@ -800,7 +800,7 @@ function rules_invoke_event_by_args($event_name, $args = array()) {
 
   // For invoking the rules event we directly acccess the global $conf. This is
   // fast without having to introduce another static cache.
-  if (!defined('MAINTENANCE_MODE') && !isset($conf['rules_empty_sets'][$event_name]) && $event = rules_get_cache('event_' . $event_name)) {
+  if (!isset($conf['rules_empty_sets'][$event_name]) && $event = rules_get_cache('event_' . $event_name)) {
     $event->executeByArgs($args);
   }
 }
@@ -814,8 +814,7 @@ function rules_invoke_event_by_args($event_name, $args = array()) {
  *   Pass further parameters as required for the invoked component.
  *
  * @return
- *   An array of variables as provided by the component, or FALSE in case the
- *   component could not be executed.
+ *   The variables as provided by the component.
  */
 function rules_invoke_component() {
   $args = func_get_args();
@@ -823,7 +822,6 @@ function rules_invoke_component() {
   if ($component = rules_get_cache('comp_' . $name)) {
     return $component->executeByArgs($args);
   }
-  return FALSE;
 }
 
 /**
@@ -836,7 +834,6 @@ function rules_invoke_component() {
  *   The key used for the comparison.
  * @param $value
  *   The value to compare the array's entry to.
- *
  * @return array
  *   The filtered array.
  */
@@ -933,10 +930,6 @@ function rules_theme() {
       'render element' => 'element',
       'file' => 'ui/ui.theme.inc',
     ),
-    'rules_debug_element' => array(
-      'render element' => 'element',
-      'file' => 'ui/ui.theme.inc',
-    ),
   );
 }
 
@@ -947,15 +940,6 @@ function rules_permission() {
   return array(
     'administer rules' => array(
       'title' => t('Administer rule configurations'),
-      'description' => t('Administer rule configurations including events, conditions and actions for which the user has sufficient access permissions.'),
-    ),
-    'bypass rules access' => array(
-      'title' => t('Bypass Rules access control'),
-      'description' => t('Control all configurations regardless of permission restrictions of events, conditions or actions.'),
-      'restrict access' => TRUE,
-    ),
-    'access rules debug' => array(
-      'title' => t('Access the Rules debug log'),
     ),
   );
 }
@@ -1002,16 +986,6 @@ function rules_menu_add_element_title($array) {
 }
 
 /**
- * Returns the current region for the debug log.
- */
-function rules_debug_log_region() {
-  // If there is no setting for the current theme use the default theme setting.
-  global $theme_key;
-  $theme_default = variable_get('theme_default', 'bartik');
-  return variable_get('rules_debug_region_' . $theme_key, variable_get('rules_debug_region_' . $theme_default, 'help'));
-}
-
-/**
  * Implements hook_page_build() to add the rules debug log to the page bottom.
  */
 function rules_page_build(&$page) {
@@ -1023,7 +997,7 @@ function rules_page_build(&$page) {
   }
 
   if (isset($_SESSION['rules_debug'])) {
-    $region = rules_debug_log_region();
+    $region = variable_get('rules_debug_region', 'help');
     foreach ($_SESSION['rules_debug'] as $log) {
       $page[$region]['rules_debug'][] = array(
         '#markup' => $log,
@@ -1032,29 +1006,17 @@ function rules_page_build(&$page) {
     }
     unset($_SESSION['rules_debug']);
   }
-
   if (rules_show_debug_output()) {
-    $region = rules_debug_log_region();
-    $page[$region]['rules_debug']['#pre_render'] = array('rules_debug_log_pre_render');
-  }
-}
-
-/**
- * Pre-render callback for the debug log, which renders and then clears it.
- */
-function rules_debug_log_pre_render($elements) {
-  $logger = RulesLog::logger();
-  if ($log = $logger->render()) {
     $logger = RulesLog::logger();
-    $logger->clear();
-    $elements[] = array('#markup' => $log);
-    $elements['#theme_wrappers'] = array('rules_log');
-    // Log the rules log to the system log if enabled.
-    if (variable_get('rules_debug_log', FALSE)) {
-      watchdog('rules', 'Rules debug information: !log', array('!log' => $log), WATCHDOG_NOTICE);
+    $region = variable_get('rules_debug_region', 'help');
+    if ($log = $logger->render()) {
+      $page[$region]['rules_debug'][] = array(
+        '#markup' => $log,
+      );
+      $page[$region]['rules_debug']['#theme_wrappers'] = array('rules_log');
+      $logger->clear();
     }
   }
-  return $elements;
 }
 
 /**
@@ -1081,11 +1043,8 @@ function rules_drupal_goto_alter(&$path, &$options, &$http_response_code) {
  * Returns whether the debug log should be shown.
  */
 function rules_show_debug_output() {
-  if (variable_get('rules_debug', FALSE) == RulesLog::INFO && user_access('access rules debug')) {
-    return TRUE;
-  }
   // For performance avoid unnecessary auto-loading of the RulesLog class.
-  return variable_get('rules_debug', FALSE) == RulesLog::WARN && user_access('access rules debug') && class_exists('RulesLog', FALSE) && RulesLog::logger()->hasErrors();
+  return variable_get('rules_debug', FALSE) || (class_exists('RulesLog', FALSE) && RulesLog::logger()->hasErrors() && user_access('administer rules'));
 }
 
 /**
@@ -1097,10 +1056,6 @@ function rules_exit() {
       // Keep the log in the session so we can show it on the next page.
       $_SESSION['rules_debug'][] = $log;
     }
-  }
-  // Log the rules log to the system log if enabled.
-  if (variable_get('rules_debug_log', FALSE) && $log = RulesLog::logger()->render()) {
-    watchdog('rules', 'Rules debug information: !log', array('!log' => $log), WATCHDOG_NOTICE);
   }
 }
 
@@ -1131,37 +1086,6 @@ function rules_element_info() {
  * Implements hook_modules_enabled().
  */
 function rules_modules_enabled($modules) {
-  // Re-enable Rules configurations that are dirty, because they require one of
-  // the enabled the modules.
-  $query = db_select('rules_dependencies', 'rd');
-  $query->join('rules_config', 'rc', 'rd.id = rc.id');
-  $query->fields('rd', array('id'))
-        ->condition('rd.module', $modules, 'IN')
-        ->condition('rc.dirty', 1);
-  $ids = $query->execute()->fetchCol();
-
-  // If there are some configurations that might work again, re-check all dirty
-  // configurations as others might work again too, e.g. consider a rule that is
-  // dirty because it requires a dirty component.
-  if ($ids) {
-    $rules_configs = rules_config_load_multiple(FALSE, array('dirty' => 1));
-    foreach ($rules_configs as $rules_config) {
-      try {
-        $rules_config->integrityCheck();
-        // If no exceptions were thrown we can set the configuration back to OK.
-        db_update('rules_config')
-          ->fields(array('dirty' => 0))
-          ->condition('id', $rules_config->id)
-          ->execute();
-        if ($rules_config->active) {
-          drupal_set_message(t('All dependencies for the Rules configuration %config are met again, so it has been re-activated.', array('%config' => $rules_config->label())));
-        }
-      }
-      catch (RulesIntegrityException $e) {
-        // The rule is still dirty, so do nothing.
-      }
-    }
-  }
   rules_clear_cache();
 }
 
@@ -1169,50 +1093,17 @@ function rules_modules_enabled($modules) {
  * Implements hook_modules_disabled().
  */
 function rules_modules_disabled($modules) {
-  // Disable Rules configurations that depend on one of the disabled modules.
-  $query = db_select('rules_dependencies', 'rd');
-  $query->join('rules_config', 'rc', 'rd.id = rc.id');
-  $query->fields('rd', array('id'))
-        ->distinct()
-        ->condition('rd.module', $modules, 'IN')
-        ->condition('rc.dirty', 0);
-  $ids = $query->execute()->fetchCol();
-
-  if (!empty($ids)) {
-    db_update('rules_config')
-      ->fields(array('dirty' => 1))
-      ->condition('id', $ids, 'IN')
-      ->execute();
-    // Tell the user about enabled rules that have been marked as dirty.
-    $count = db_select('rules_config', 'r')
-      ->fields('r')
-      ->condition('id', $ids, 'IN')
-      ->condition('active', 1)
-      ->execute()->rowCount();
-    if ($count > 0) {
-      $message = format_plural($count,
-        '1 Rules configuration requires some of the disabled modules to function and cannot be executed any more.',
-        '@count Rules configuration require some of the disabled modules to function and cannot be executed any more.'
-      );
-      drupal_set_message($message, 'warning');
-    }
-  }
   rules_clear_cache();
+  //TODO: Disable configs with now broken dependencies?
 }
 
 /**
- * Access callback for dealing with Rules configurations.
+ * Access callback for rules configurations.
  *
  * @see entity_access()
  */
-function rules_config_access($op, $rules_config = NULL, $account = NULL) {
-  if (user_access('bypass rules access', $account)) {
-    return TRUE;
-  }
-  if (!isset($rules_config) || (isset($account) && $account->uid != $GLOBALS['user']->uid)) {
-    return FALSE;
-  }
-  return user_access('administer rules', $account) && ($op == 'view' || $rules_config->access());
+function rules_config_access($op, $rules_config, $account = NULL) {
+  return user_access('administer rules', $account);
 }
 
 /**
@@ -1237,67 +1128,5 @@ function rules_menu() {
     'file path' => drupal_get_path('module', 'rules'),
     'type' => MENU_CALLBACK,
   );
-  $items['admin/config/workflow/rules/autocomplete_tags'] = array(
-    'title' => 'Rules tags autocomplete',
-    'page callback' => 'rules_autocomplete_tags',
-    'page arguments' => array(5),
-    'access arguments' => array('administer rules'),
-    'file' => 'ui/ui.forms.inc',
-    'type' => MENU_CALLBACK,
-  );
   return $items;
 }
-
-/**
- * Helper function to keep track of external documentation pages for Rules.
- *
- * @param $topic
- *   The topic key for used for identifying help pages.
- *
- * @return
- *   Either a URL for the given page, or the full list of external help pages.
- */
-function rules_external_help($topic = NULL) {
-  $help = array(
-    'rules' =>                'http://drupal.org/node/298480',
-    'terminology' =>          'http://drupal.org/node/1299990',
-    'condition-components' => 'http://drupal.org/node/1300034',
-    'data-selection' =>       'http://drupal.org/node/1300042',
-    'chained-tokens' =>       'http://drupal.org/node/1300042',
-    'loops' =>                'http://drupal.org/node/1300058',
-    'components' =>           'http://drupal.org/node/1300024',
-    'component-types' =>      'http://drupal.org/node/1300024',
-    'variables' =>            'http://drupal.org/node/1300024',
-    'scheduler' =>            'http://drupal.org/node/1300068',
-    'coding' =>               'http://drupal.org/node/878720',
-  );
-
-  if (isset($topic)) {
-    return isset($help[$topic]) ? $help[$topic] : FALSE;
-  }
-  return $help;
-}
-
-/**
- * Implements hook_help().
- */
-function rules_help($path, $arg) {
-  // Only enable the help if the admin module is active.
-  if ($path == 'admin/help#rules' && module_exists('rules_admin')) {
-
-    $output['header'] = array(
-      '#markup' => t('Rules documentation is kept online. Please use the links below for more information about Rules. Feel free to contribute to improving the online documentation!'),
-    );
-    // Build a list of essential Rules help pages, formatted as a bullet list.
-    $link_list['rules'] = l(t('Rules introduction'), rules_external_help('rules'));
-    $link_list['terminology'] = l(t('Rules terminology'), rules_external_help('terminology'));
-    $link_list['scheduler'] = l(t('Rules Scheduler'), rules_external_help('scheduler'));
-    $link_list['coding'] = l(t('Coding for Rules'), rules_external_help('coding'));
-
-    $output['topic-list'] = array(
-      '#markup' => theme('item_list', array('items' => $link_list)),
-    );
-    return render($output);
-  }
-}
-

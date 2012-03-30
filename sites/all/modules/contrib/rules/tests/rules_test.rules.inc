@@ -34,66 +34,17 @@ function rules_test_rules_condition_info() {
   $items['rules_condition_content_is_published'] = $defaults + array(
     'label' => t('Content is published'),
   );
-  $items['rules_test_condition_true'] = array(
-    'label' => t('Test condition returning true'),
-    'group' => t('Rules test'),
-  );
-  $items['rules_test_condition_false'] = array(
-    'label' => t('Test condition returning false'),
-    'group' => t('Rules test'),
-  );
-  // A condition for testing passing entities wrapped.
-  $items['rules_test_condition_node_wrapped'] = array(
-    'label' => t('Content is published'),
-    'parameter' => array(
-      'node' => array(
-        'type' => 'node',
-        'label' => t('Content'),
-        'wrapped' => TRUE,
-      ),
-    ),
-    'group' => t('Node'),
-  );
   return $items;
 }
 
-/**
- * Condition implementation returning true.
- */
-function rules_test_condition_true($settings, $state, $element) {
-  if (!$element instanceof RulesCondition) {
-    throw new Exception('Rules element has not been passed to condition.');
-  }
-  rules_log('condition true called');
-  return TRUE;
-}
-
-/**
- * Condition implementation returning false.
- */
-function rules_test_condition_false() {
-  rules_log('condition false called');
-  return FALSE;
-}
-
-/**
- * Condition implementation receiving the node wrapped.
- */
-function rules_test_condition_node_wrapped($wrapper) {
-  return $wrapper instanceof EntityMetadataWrapper;
-}
 
 /**
  * Implements hook_rules_action_info().
  */
 function rules_test_rules_action_info() {
-  $items['rules_test_action'] = array(
-    'label' => t('Test action'),
-    'group' => t('Rules test'),
-  );
-  return $items + array(
+  return array(
     'rules_node_publish_action' => array(
-      'label' => t('Publish content, but do not save'),
+      'label' => t('Blabla'),
       'parameter' => array(
         'node' => array('type' => 'node', 'label' => t('Content')),
       ),
@@ -103,7 +54,7 @@ function rules_test_rules_action_info() {
       'base' => 'node_publish_action',
     ),
     'rules_node_publish_action_save' => array(
-      'label' => t('Publish content'),
+      'label' => t('Blabla'),
       'parameter' => array(
         'node' => array(
           'type' => 'node',
@@ -114,31 +65,18 @@ function rules_test_rules_action_info() {
       'base' => 'node_publish_action',
     ),
     'rules_node_make_sticky_action' => array(
-      'label' => t('Make content sticky'),
+      'label' => t('Blabla'),
       'parameter' => array(
         'node' => array(
           'type' => 'node',
           'label' => t('Content'),
           'save' => TRUE,
-        ),
-      ),
-      'base' => 'node_make_sticky_action',
-    ),
-    // The same action again requiring a 'page' node.
-    'rules_node_page_make_sticky_action' => array(
-      'label' => t('Mage page content sticky'),
-      'parameter' => array(
-        'node' => array(
-          'type' => 'node',
-          'label' => t('Content'),
-          'save' => TRUE,
-          'bundles' => array('page'),
         ),
       ),
       'base' => 'node_make_sticky_action',
     ),
     'rules_action_test_reference' => array(
-      'label' => t('Change argument passed by reference'),
+      'label' => t('Blabla'),
       'parameter' => array(
          // For references working right, we need a data type with a wrapper.
         'arg' => array('type' => 'test'),
@@ -165,6 +103,7 @@ function rules_test_rules_action_info() {
       'group' => t('Node'),
       'access callback' => 'rules_node_integration_access',
     ),
+    // TODO: Replace by a generic delete data action.
     'rules_action_delete_node' => array(
       'label' => t('Delete content'),
       'parameter' => array(
@@ -194,13 +133,6 @@ function rules_test_rules_action_info() {
       'group' => t('Node'),
     ),
   );
-}
-
-/**
- * Test action doing nothing exception logging it has been called.
- */
-function rules_test_action() {
-  rules_log('action called');
 }
 
 /**

@@ -296,7 +296,8 @@ class CommerceProductUIAdminTest extends CommerceBaseTestCase {
     $this->drupalPost(NULL, array(), t('Delete'));
 
     // Check for the product in database.
-    $this->assertFalse(commerce_product_load($product->product_id), t('After deleting it, the product is no more in database'));
+    $deleted_product = commerce_product_load_multiple(array($product->product_id), array(), TRUE);
+    $this->assertFalse(reset($deleted_product), t('After deleting it, the product is no more in database'));
 
     $this->assertTrue($this->url == url('admin/commerce/products', array('absolute' => TRUE)), t('Landing page after deleting a product is the product listing page'));
 
@@ -511,12 +512,21 @@ class CommerceProductUIAdminTest extends CommerceBaseTestCase {
     // deleted.
     $this->pass(t('Product type has at least one product, test the validation messages:'));
     $this->assertTitle(t('Cannot delete the !name product type', array('!name' => $product_types['product']['name'])) . ' | Drupal', t('Validation title of the page displayed correctly.'));
+
     // Get the count of products of the type
-    $count = db_query("SELECT product_id FROM {commerce_product} WHERE type = :product_type", array(':product_type' => $product_types['product']['type']))->rowCount();
+    $query = new EntityFieldQuery();
+
+    $query->entityCondition('entity_type', 'commerce_product', '=')
+      ->entityCondition('bundle', $product_types['product']['type'], '=')
+      ->count();
+
+    $count = $query->execute();
+
     $message = format_plural($count,
       'There is 1 product of this type. It cannot be deleted.',
       'There are @count products of this type. It cannot be deleted.'
     );
+
     $this->assertText($message, t('Display the reason why the product type cannot be deleted and show the number of products related to it'));
   }
 

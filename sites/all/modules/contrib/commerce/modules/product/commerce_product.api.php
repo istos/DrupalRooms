@@ -7,6 +7,97 @@
 
 
 /**
+ * Defines the types of products available for creation on the site.
+ *
+ * Product types are represented as bundles of the Commerce Product entity type.
+ * Each one has a unique machine-name, title, description, and help text. They
+ * can also each have unique fields to store additional product data that may
+ * be exposed to the Add to Cart form as product attributes.
+ *
+ * The Product UI module implements this hook to define product types based on
+ * information stored in the database. On installation, Product UI adds a basic
+ * product type named "Product" to the database that can be used exclusively on
+ * a site with simple products or deleted if unnecessary for a given site.
+ *
+ * The product type array structure includes the following keys:
+ * - type: the machine-name of the product type
+ * - name: the translatable name of the product type
+ * - description: a translatable description of the product type for use in
+ *   administrative lists and pages
+ * - help: the translatable help text included at the top of the add / edit form
+ *   for products of this type
+ * - revision: for product types governed by the Product UI module, this boolean
+ *   determines whether or not products of this type will default to creating
+ *   new revisions when edited
+ * - module: the name of the module defining the product type; should not be set
+ *   by the hook itself but will be set when all product types are loaded
+ *
+ * @return
+ *   An array of product type arrays keyed by type.
+ */
+function hook_commerce_product_type_info() {
+  // Return the product types defined in the database by the Product UI module.
+  return db_query('SELECT * FROM {commerce_product_type}')->fetchAllAssoc('type', PDO::FETCH_ASSOC);
+}
+
+/**
+ * Allows modules to alter the product types defined by other modules.
+ *
+ * @param $product_types
+ *   The array of product types defined by enabled modules.
+ *
+ * @see hook_commerce_product_type_info()
+ */
+function hook_commerce_product_type_info_alter(&$product_types) {
+  // No example.
+}
+
+/**
+ * Allows modules to react to the creation of a new product type via Product UI.
+ *
+ * @param $product_type
+ *   The product type info array.
+ * @param $skip_reset
+ *   Boolean indicating whether or not this insert will trigger a cache reset
+ *   and menu rebuild.
+ *
+ * @see commerce_product_ui_product_type_save()
+ */
+function hook_commerce_product_type_insert($product_type, $skip_reset) {
+  // No example.
+}
+
+/**
+ * Allows modules to react to the update of a product type via Product UI.
+ *
+ * @param $product_type
+ *   The product type info array.
+ * @param $skip_reset
+ *   Boolean indicating whether or not this update will trigger a cache reset
+ *   and menu rebuild.
+ *
+ * @see commerce_product_ui_product_type_save()
+ */
+function hook_commerce_product_type_update($product_type, $skip_reset) {
+  // No example.
+}
+
+/**
+ * Allows modules to react to the deletion of a product type via Product UI.
+ *
+ * @param $product_type
+ *   The product type info array.
+ * @param $skip_reset
+ *   Boolean indicating whether or not this deletion will trigger a cache reset
+ *   and menu rebuild.
+ *
+ * @see commerce_product_ui_product_type_delete()
+ */
+function hook_commerce_product_type_delete($product_type, $skip_reset) {
+  // No example.
+}
+
+/**
  * Lets modules specify the path information expected by a uri callback.
  *
  * The Product module defines a uri callback for the product entity even though

@@ -33,19 +33,12 @@ function system_views_data() {
       'field' => 'filename'
     ),
   );
+  $data['file_managed']['table']['entity type'] = 'file';
+
 
   // The file table does not inherently join to the node table,
   // but may things (such as upload.module) can add relationships
   // that allow file fields to be used.
-
-  // For other base tables, explain how we join
-  $data['file_managed']['table']['join'] = array(
-    'users' => array(
-      // direct join to the users table via 'uid' field.
-      'left_field' => 'uid',
-      'field' => 'uid',
-     ),
-  );
 
   // fid
   $data['file_managed']['fid'] = array(
@@ -58,6 +51,7 @@ function system_views_data() {
     'argument' => array(
       'handler' => 'views_handler_argument_file_fid',
       'name field' => 'filename', // the field to display in the summary.
+      'numeric' => TRUE,
     ),
     'filter' => array(
       'handler' => 'views_handler_filter_numeric',
@@ -259,7 +253,7 @@ function system_views_data() {
       'base' => 'node',
       'base field' => 'nid',
       'relationship field' => 'id',
-      'extra' => array(array('table' => 'file_usage', 'field' => 'type', 'operator' => '=', 'value' => 'node')),
+      'extra' => array(array('field' => 'type', 'value' => 'node')),
     ),
   );
   $data['file_usage']['node_to_file'] = array(

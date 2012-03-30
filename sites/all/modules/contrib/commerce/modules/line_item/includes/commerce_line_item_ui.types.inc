@@ -4,7 +4,7 @@
  * Menu callback: display an overview of available types.
  */
 function commerce_line_item_ui_types_overview() {
-  drupal_add_css(drupal_get_path('module', 'commerce_line_item_ui') .'/theme/commerce_line_item_ui.types.css');
+  drupal_add_css(drupal_get_path('module', 'commerce_line_item') .'/theme/commerce_line_item.admin.css');
 
   $header = array(
     t('Name'),
@@ -53,7 +53,7 @@ function theme_line_item_type_admin_overview($variables) {
   $line_item_type = $variables['line_item_type'];
 
   $output = check_plain($line_item_type['name']);
-  $output .= ' <small> (Machine name: ' . check_plain($line_item_type['type']) . ')</small>';
+  $output .= ' <small>' . t('(Machine name: @type)', array('@type' => $line_item_type['type'])) . '</small>';
 
   if (!empty($line_item_type['description'])) {
     $output .= '<div class="description">' . filter_xss_admin($line_item_type['description']) . '</div>';

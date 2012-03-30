@@ -113,9 +113,7 @@ function rules_rules_core_data_info() {
   }
 
   if (module_exists('taxonomy')) {
-    // For exportability identify vocabularies by name.
     $return['taxonomy_vocabulary']['wrapper class'] = 'RulesTaxonomyVocabularyWrapper';
-    $return['taxonomy_vocabulary']['ui class'] = 'RulesDataUITaxonomyVocabulary';
   }
 
   return $return;
@@ -201,7 +199,6 @@ function rules_rules_core_condition_info() {
     'group' => t('Components'),
     'base' => 'rules_element_invoke_component',
     'named parameter' => TRUE,
-    'access callback' => 'rules_element_invoke_component_access_callback',
   );
   $items = array();
   foreach (rules_get_components(FALSE, 'condition') as $name => $config) {
@@ -225,7 +222,6 @@ function rules_rules_core_action_info() {
     'group' => t('Components'),
     'base' => 'rules_element_invoke_component',
     'named parameter' => TRUE,
-    'access callback' => 'rules_element_invoke_component_access_callback',
   );
   $items = array();
   foreach (rules_get_components(FALSE, 'action') as $name => $config) {
@@ -255,55 +251,12 @@ function rules_element_invoke_component_operations(RulesPlugin $element) {
 }
 
 /**
- * Validate callback to make sure the invoked component exists and is not dirty.
- *
- * @see rules_scheduler_action_schedule_validate()
- */
-function rules_element_invoke_component_validate(RulesPlugin $element) {
-  $recursion = &drupal_static(__FUNCTION__, array());
-
-  // Bail out in case of recursive checks to avoid infinite loops. This is
-  // necessary when handling components that directly or indirectly call itself.
-  if (!empty($recursion[$element->root()->name])) {
-    return;
-  }
-  $recursion[$element->root()->name] = TRUE;
-
-  $info = $element->info();
-  $component = rules_config_load($info['#config_name']);
-  if (!$component) {
-    unset($recursion[$element->root()->name]);
-    throw new RulesIntegrityException(t('The component %config does not exist.', array('%config' => $info['#config_name'])), $element);
-  }
-  try {
-    $component->integrityCheck();
-  }
-  catch (RulesIntegrityException $e) {
-    unset($recursion[$element->root()->name]);
-    throw new RulesIntegrityException(t('The component %config fails the integrity check. Error: !message', array('%config' => $info['#config_name'], '!message' => $e->getMessage())), $element);
-  }
-
-  unset($recursion[$element->root()->name]);
-}
-
-/**
  * Implements the features export callback of the RulesPluginFeaturesIntegrationInterace.
  */
 function rules_element_invoke_component_features_export(&$export, &$pipe, $module_name = '', $element) {
   // Add the used component to the pipe.
   $info = $element->info();
   $pipe['rules_config'][] = $info['#config_name'];
-}
-
-/**
- * Access callback for the invoke component condition/action.
- */
-function rules_element_invoke_component_access_callback($type, $name) {
-  // Only allow access to the action/condition if the user has access to the
-  // component.
-  // Cut of the leading 'component_' from the action name.
-  $component = rules_config_load(substr($name, 10));
-  return $component && $component->access();
 }
 
 /**

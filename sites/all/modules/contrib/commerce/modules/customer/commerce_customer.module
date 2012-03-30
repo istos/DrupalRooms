@@ -88,6 +88,12 @@ function commerce_customer_profile_uri($profile) {
  */
 function commerce_customer_hook_info() {
   $hooks = array(
+    'commerce_customer_profile_type_info' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_customer_profile_type_info_alter' => array(
+      'group' => 'commerce',
+    ),
     'commerce_customer_profile_uri' => array(
       'group' => 'commerce',
     ),
@@ -104,6 +110,9 @@ function commerce_customer_hook_info() {
       'group' => 'commerce',
     ),
     'commerce_customer_profile_delete' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_customer_profile_can_delete' => array(
       'group' => 'commerce',
     ),
   );
@@ -335,8 +344,12 @@ function commerce_customer_commerce_checkout_pane_info() {
   $weight = 5;
 
   foreach (commerce_customer_profile_types() as $type => $profile_type) {
+    // Get instance data for the customer profile reference field.
+    $field_name = variable_get('commerce_customer_profile_' . $type . '_field', '');
+    $instance = field_info_instance('commerce_order', $field_name, 'commerce_order');
+
     $checkout_panes['customer_profile_' . $type] = array(
-      'title' => $profile_type['name'],
+      'title' => !empty($instance['label']) ? check_plain($instance['label']) : $profile_type['name'],
       'file' => 'includes/commerce_customer.checkout_pane.inc',
       'base' => 'commerce_customer_profile_pane',
       'page' => 'checkout',
@@ -681,7 +694,7 @@ function commerce_customer_field_info() {
       'settings' => array('profile_type' => 'billing'),
       'instance_settings' => array(),
       'default_widget' => 'options_select',
-      'default_formatter' => 'commerce_customer_profile_reference_view',
+      'default_formatter' => 'commerce_customer_profile_reference_display',
       'property_type' => 'commerce_customer_profile',
       'property_callbacks' => array('commerce_customer_profile_property_info_callback'),
     ),
@@ -1059,7 +1072,6 @@ function commerce_customer_field_widget_error($element, $error) {
 function commerce_customer_profile_property_info_callback(&$info, $entity_type, $field, $instance, $field_type) {
   $property = &$info[$entity_type]['bundles'][$instance['bundle']]['properties'][$field['field_name']];
   $property['options list'] = 'entity_metadata_field_options_list';
-  unset($property['query callback']);
 }
 
 /**

@@ -9,7 +9,7 @@
  * Menu callback: display an overview of available types.
  */
 function commerce_customer_ui_customer_profile_types_overview() {
-  drupal_add_css(drupal_get_path('module', 'commerce_customer_ui') . '/theme/commerce_customer_ui.profile_types.css');
+  drupal_add_css(drupal_get_path('module', 'commerce_customer') . '/theme/commerce_customer.admin.css');
 
   $header = array(
     t('Name'),
@@ -57,7 +57,7 @@ function theme_customer_profile_type_admin_overview($variables) {
   $profile_type = $variables['profile_type'];
 
   $output = check_plain($profile_type['name']);
-  $output .= ' <small> (Machine name: ' . check_plain($profile_type['type']) . ')</small>';
+  $output .= ' <small>' . t('(Machine name: @type)', array('@type' => $profile_type['type'])) . '</small>';
   $output .= '<div class="description">' . filter_xss_admin($profile_type['description']) . '</div>';
 
   return $output;

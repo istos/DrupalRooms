@@ -11,6 +11,16 @@
  * @ingroup views_field_handlers
  */
 class views_handler_field_prerender_list extends views_handler_field {
+  /**
+   * Stores all items which are used to render the items.
+   * It should be keyed first by the id of the base table, for example nid.
+   * The second key is the id of the thing which is displayed multiple times
+   * per row, for example the tid.
+   *
+   * @var array
+   */
+  var $items = array();
+
   function option_definition() {
     $options = parent::option_definition();
 
@@ -114,8 +124,13 @@ class views_handler_field_prerender_list extends views_handler_field {
    *   An object containing all retrieved values.
    * @param $field
    *   Optional name of the field where the value is stored.
+   * @param $raw
+   *   Use the raw data and not the data defined in pre_render
    */
-  function get_value($values, $field = NULL) {
+  function get_value($values, $field = NULL, $raw = FALSE) {
+    if ($raw) {
+      return parent::get_value($values, $field);
+    }
     $item = $this->get_items($values);
     $item = (array) $item;
     if (isset($field) && isset($item[$field])) {

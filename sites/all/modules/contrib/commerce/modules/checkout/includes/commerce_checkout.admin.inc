@@ -129,7 +129,7 @@ function commerce_checkout_builder_form_reset_submit($form, &$form_state) {
 function theme_commerce_checkout_builder_form($variables) {
   $form = $variables['form'];
 
-  drupal_add_css(drupal_get_path('module', 'commerce_checkout') .'/theme/commerce_checkout_admin.css');
+  drupal_add_css(drupal_get_path('module', 'commerce_checkout') .'/theme/commerce_checkout.admin.css');
   drupal_add_js(drupal_get_path('module', 'commerce_checkout') .'/commerce_checkout_admin.js');
 
   // Build the full table header; Page and Weight will be hidden by tabledrag.
@@ -211,11 +211,16 @@ function commerce_checkout_pane_settings_form($form, &$form_state, $checkout_pan
     ),
     '#default_value' => $checkout_pane['fieldset'] ? ($checkout_pane['collapsible'] ? ($checkout_pane['collapsed'] ? 'collapsed' : 'collapsible') : 'default') : 'none',
   );
-  $form['display']['review'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Include this pane on the Review checkout pane.'),
-    '#default_value' => $checkout_pane['review'],
-  );
+
+  // If the checkout pane has a review callback, allow the user to include the
+  // pane on the review checkout pane.
+  if (commerce_checkout_pane_callback($checkout_pane, 'review') !== FALSE) {
+    $form['display']['review'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Include this pane on the Review checkout pane.'),
+      '#default_value' => $checkout_pane['review'],
+    );
+  }
 
   // If a settings form exists for the specified checkout pane...
   if ($callback = commerce_checkout_pane_callback($checkout_pane, 'settings_form')) {

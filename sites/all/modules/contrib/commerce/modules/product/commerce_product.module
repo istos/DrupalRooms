@@ -28,12 +28,6 @@ function commerce_product_menu() {
  */
 function commerce_product_hook_info() {
   $hooks = array(
-    'commerce_product_uri' => array(
-      'group' => 'commerce',
-    ),
-    'commerce_product_view' => array(
-      'group' => 'commerce',
-    ),
     'commerce_product_type_info' => array(
       'group' => 'commerce',
     ),
@@ -49,6 +43,12 @@ function commerce_product_hook_info() {
     'commerce_product_type_delete' => array(
       'group' => 'commerce',
     ),
+    'commerce_product_uri' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_product_view' => array(
+      'group' => 'commerce',
+    ),
     'commerce_product_presave' => array(
       'group' => 'commerce',
     ),
@@ -56,6 +56,9 @@ function commerce_product_hook_info() {
       'group' => 'commerce',
     ),
     'commerce_product_update' => array(
+      'group' => 'commerce',
+    ),
+    'commerce_product_can_delete' => array(
       'group' => 'commerce',
     ),
     'commerce_product_delete' => array(
@@ -75,11 +78,13 @@ function commerce_product_entity_info() {
       'label' => t('Commerce Product'),
       'controller class' => 'CommerceProductEntityController',
       'base table' => 'commerce_product',
+      'revision table' => 'commerce_product_revision',
       'fieldable' => TRUE,
       'entity keys' => array(
         'id' => 'product_id',
         'bundle' => 'type',
         'label' => 'title',
+        'revision' => 'revision_id',
       ),
       'bundle keys' => array(
         'bundle' => 'type',
@@ -913,4 +918,18 @@ function commerce_product_entity_translation_tab_access($product) {
  */
 function commerce_product_entity_translation_supported_type($type) {
   return variable_get('language_product_type_' . $type, 0) == ENTITY_TRANSLATION_ENABLED;
+}
+
+/**
+ * Sanitizes the product SKU before output.
+ */
+function template_preprocess_commerce_product_sku(&$variables) {
+  $variables['sku'] = check_plain($variables['sku']);
+}
+
+/**
+ * Sanitizes the product title before output.
+ */
+function template_preprocess_commerce_product_title(&$variables) {
+  $variables['title'] = check_plain($variables['title']);
 }

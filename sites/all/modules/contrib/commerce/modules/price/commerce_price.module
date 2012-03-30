@@ -21,6 +21,9 @@ function commerce_price_hook_info() {
     'commerce_price_component_type_info_alter' => array(
       'group' => 'commerce',
     ),
+    'commerce_price_field_formatter_prepare_view' => array(
+      'group' => 'commerce',
+    ),
     'commerce_price_formatted_components_alter' => array(
       'group' => 'commerce',
     ),
@@ -67,7 +70,7 @@ function commerce_price_field_validate($entity_type, $entity, $field, $instance,
     if (!empty($item['amount']) && !is_numeric($item['amount'])) {
       $errors[$field['field_name']][$langcode][$delta][] = array(
         'error' => 'price_numeric',
-        'message' => t('%name: you must enter a numeric value for the price.', array('%name' => check_plain($instance['label']))),
+        'message' => t('%name: you must enter a numeric value for the price.', array('%name' => $instance['label'])),
       );
     }
   }
@@ -421,7 +424,7 @@ function commerce_price_field_formatter_view($entity_type, $entity, $field, $ins
 
           if (empty($components[$component['name']])) {
             $components[$component['name']] = array(
-              'title' => $component_type['display_title'],
+              'title' => check_plain($component_type['display_title']),
               'price' => commerce_price_component_total($item, $component['name']),
               'weight' => $component_type['weight'],
             );
@@ -476,7 +479,7 @@ function commerce_price_field_formatter_view($entity_type, $entity, $field, $ins
  */
 function theme_commerce_price_formatted_components($variables) {
   // Add the CSS styling to the table.
-  drupal_add_css(drupal_get_path('module', 'commerce_price') . '/theme/commerce_price.css');
+  drupal_add_css(drupal_get_path('module', 'commerce_price') . '/theme/commerce_price.theme.css');
 
   // Build table rows out of the components.
   $rows = array();
@@ -581,7 +584,7 @@ function commerce_price_field_widget_form(&$form, &$form_state, $field, $instanc
   // Load the default currency for this instance.
   $default_currency = commerce_currency_load($default_currency_code);
 
-  $element['#attached']['css'][] = drupal_get_path('module', 'commerce_price') . '/theme/commerce_price.css';
+  $element['#attached']['css'][] = drupal_get_path('module', 'commerce_price') . '/theme/commerce_price.theme.css';
 
   // Build the form based on the type of price widget.
   switch ($instance['widget']['type']) {
@@ -1034,4 +1037,14 @@ function commerce_price_component_total($price, $name = NULL) {
   }
 
   return $total;
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function commerce_price_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'commerce_price') . '/includes/views',
+  );
 }

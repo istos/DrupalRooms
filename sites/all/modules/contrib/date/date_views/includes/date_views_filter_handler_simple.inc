@@ -17,8 +17,6 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
       if (!empty($field) && !empty($field['type'])) {
         $this->date_handler->date_type = $field['type'];
       }
-      $this->date_handler->db_timezone = date_get_timezone_db($field['settings']['tz_handling']);
-      $this->date_handler->local_timezone = date_get_timezone($field['settings']['tz_handling']);
     }
     $this->form_submitted = FALSE;
     $this->date_handler->granularity = isset($options['granularity']) ? $options['granularity'] : 'day';
@@ -48,9 +46,7 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
     // If this is a remembered value, use the value from the SESSION.
     if (!empty($this->options['expose']['remember'])) {
       $display_id = ($this->view->display_handler->is_defaulted('filters')) ? 'default' : $this->view->current_display;
-      if (!empty($_SESSION['views'][$this->view->name][$display_id]['date_filter'][$prefix])) {
-        return $_SESSION['views'][$this->view->name][$display_id]['date_filter'][$prefix];
-      }
+      return $_SESSION['views'][$this->view->name][$display_id]['date_filter'][$prefix];
     }
 
     // This is a date that needs to be constructed from options like 'now' .
@@ -108,8 +104,12 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
 
   }
 
-  function op_between($field) {
+  function pre_query() {
+    // Setting the offset to avoid trying to use timezone adjustments for dates that don't need it.
+    $this->offset = in_array($this->date_handler->granularity, array('hour', 'minute', 'sec')) ? NULL : 0;
+  }
 
+  function op_between($field) {
     // Add the delta field to the view so we can later find the value that matched our query.
     list($table_name, $field_name) = explode('.', $field);
     if (!empty($this->options['add_delta']) && (substr($field_name, -6) == '_value' || substr($field_name, -7) == '_value2')) {
@@ -118,7 +118,7 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
 
     $min_value = $this->get_filter_value('min', $this->value['min']);
     $max_value = $this->get_filter_value('max', $this->value['max']);
-    $field = $this->date_handler->sql_field($field);
+    $field = $this->date_handler->sql_field($field, $this->offset);
     $field = $this->date_handler->sql_format($this->format, $field);
     $placeholder_min = $this->placeholder();
     $placeholder_max = $this->placeholder();
@@ -132,7 +132,6 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
   }
 
   function op_simple($field) {
-
     // Add the delta field to the view so we can later find the value that matched our query.
     list($table_name, $field_name) = explode('.', $field);
     if (!empty($this->options['add_delta']) && (substr($field_name, -6) == '_value' || substr($field_name, -7) == '_value2')) {
@@ -140,7 +139,7 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
     }
 
     $value = $this->get_filter_value('value', $this->value['value']);
-    $field = $this->date_handler->sql_field($field);
+    $field = $this->date_handler->sql_field($field, $this->offset);
     $field = $this->date_handler->sql_format($this->format, $field);
     $placeholder = $this->placeholder();
     $group = !empty($this->options['date_group']) ? $this->options['date_group'] : $this->options['group'];
@@ -279,7 +278,7 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
         $relative_label = t('Relative end date');
         break;
       default:
-        $label = '';
+        $label = t('Date value');
         $relative_label = t('Relative date');
         break;
     }
@@ -316,6 +315,11 @@ class date_views_filter_handler_simple extends views_handler_filter_date {
       if (!isset($form_state['input'][$identifier][$prefix])) {
         $form_state['input'][$identifier][$prefix] = $this->value[$prefix];
       }
+      // Add relative value as non-editable.
+      $form[$relative_id] = array(
+        '#type' => 'value',
+        '#value' => $relative_value,
+      );
     }
     else {
       // UI when the date selector is on the views configuration screen.
