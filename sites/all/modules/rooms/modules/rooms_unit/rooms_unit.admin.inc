@@ -49,6 +49,7 @@ class RoomsUnitUIController extends EntityDefaultUIController {
 
     );
     
+    
     // Add menu items to add each different type of room.
     foreach (rooms_unit_get_types() as $type) {
       $items[$this->path . '/add/' . $type->type] = array(
@@ -228,13 +229,13 @@ function rooms_unit_edit_form($form, &$form_state, $unit) {
 
 
   $form['data']['#tree'] = TRUE;
-
   $form['data']['singlediscount'] = array(
     '#type' => 'textfield',
     '#size' => 5,
-    '#default_value' => isset($unit->data['pricing']['singlediscount']) ? $room->data['pricing']['singlediscount'] : '',
+    '#default_value' => isset($unit->data['singlediscount']) ? $unit->data['singlediscount'] : '',
     '#title' => t('Discount for single occupancy'),
     '#postfix' => '%',
+    '#description' => t('The percentage stated will be removed from the final price'),
   );
 
 
@@ -325,19 +326,29 @@ function rooms_unit_edit_form($form, &$form_state, $unit) {
 
 
 /**
- * Form API validate callback for the room form
+ * Form API validate callback for the booking unit form
  */
 function rooms_unit_edit_form_validate(&$form, &$form_state) {
   $unit = $form_state['rooms_unit'];
-  
+    
   // Notify field widgets to validate their data.
   field_attach_form_validate('rooms_unit', $unit, $form, $form_state);
   
-  //validate price field
+  // Validate price field
   if (!empty($form_state['values']['base_price']) && !is_numeric($form_state['values']['base_price'])) {
     form_set_error('Base price error', t('%name: you must enter a numeric value for the price.', array('%name' => 'Base Price')));
   }
   
+  // Validate discount field
+  if (!empty($form_state['values']['data']['singlediscount']) && !is_numeric($form_state['values']['data']['singlediscount'])) {
+    form_set_error('Discount value error', t('%name: you must enter a numeric value for the discount from 1 to 100%.', array('%name' => 'Single Discount')));
+  }
+  
+  if ((($form_state['values']['data']['singlediscount'] > 100) || ($form_state['values']['data']['singlediscount'] < 1)) && ($form_state['values']['data']['singlediscount'] != '')) {
+    form_set_error('Discount value error', t('%name: you must enter a numeric value for the discount from 1 to 100%.', array('%name' => 'Single Discount')));
+  }
+
+
   if (!empty($form_state['values']['multiple']) && !is_numeric($form_state['values']['multiple'])) {
     form_set_error('Multiple Rooms Error', t('%name: you must enter at least 1 as the number of multiple rooms.', array('%name' => 'Multiple Rooms')));
   }
@@ -494,6 +505,3 @@ function rooms_unit_set_breadcrumb() {
 
   drupal_set_breadcrumb($breadcrumb);
 }
-
-
-

@@ -15,7 +15,6 @@ function rooms_availability_reference_permission() {
     'reference booking unit availability' => array(
       'title' => t('Reference Booking Unit availability'),
       'description' => t('Allows users to embed availability information in other nodes'),
-      'restrict access' => TRUE,
     ),
   );
   return $permissions;
@@ -129,9 +128,6 @@ function rooms_availability_reference_field_formatter_view($entity_type, $entity
       $eod = rooms_end_of_month_dates($endyear);
       $endday = $eod[$endmonth];
       $time->format('n');
-      
-      
-      
       
       drupal_add_library('rooms_availability', 'rooms_fullcalendar');
       drupal_add_js(drupal_get_path('module', 'rooms_availability_reference') . '/js/rooms_availability_reference.js');

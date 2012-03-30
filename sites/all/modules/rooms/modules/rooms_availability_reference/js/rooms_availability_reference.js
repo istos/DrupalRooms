@@ -2,24 +2,24 @@
 
 Drupal.behaviors.rooms_availability_reference = {
   attach: function(context) {    
-    var minDate =new Date(2011, 2, 1, 0, 0, 0, 0);
+    var minDate =new Date();
     $('#calendar').fullCalendar({
       ignoreTimezone:false,
       editable:false,
-      month:'7',
-      year:'2011',
+      month:minDate.getMonth(),
+      year:minDate.getFullYear(),
       header:{
         left: 'today',
 				center: 'title',
 				right: 'prev, next'
       },
-      events: Drupal.settings.basePath + '?q=admin/rooms/units/unit/'
+      events: Drupal.settings.basePath + '?q=rooms/units/unit/'
                                         + Drupal.settings.roomsAvailabilityRef.unitID
                                         + '/availability/json/'
                                         + Drupal.settings.roomsAvailabilityRef.startyear
                                         + '/'
                                         + Drupal.settings.roomsAvailabilityRef.startmonth
-                                        +'/1/'
+                                        +'/1/' //start day
                                         + Drupal.settings.roomsAvailabilityRef.endyear
                                         +'/'
                                         + Drupal.settings.roomsAvailabilityRef.endmonth

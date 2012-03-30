@@ -80,6 +80,26 @@ function rooms_unit_type_form($form, &$form_state, $unit_type, $op = 'edit') {
     '#maxlength' => 2,
   );
   
+	$form['data']['rooms_description_source'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Select Unit Description source'),
+    '#description' => t('The node you choose here will be rendered in the booking results'),
+    '#size' => 30,
+    '#maxlength' => 60,
+    '#autocomplete_path' => 'admin/rooms/unit-type/description-source',
+    '#default_value' => isset($unit_type->data['rooms_description_source']) ? $unit_type->data['rooms_description_source'] : '',
+    '#weight' => 3,
+  );
+	
+  $form['data']['singlediscount'] = array(
+    '#type' => 'textfield',
+    '#size' => 5,
+    '#default_value' => isset($unit_type->data['singlediscount']) ? $unit_type->data['singlediscount'] : '',
+    '#title' => t('Discount for single occupancy'),
+    '#postfix' => '%',
+    '#description' => t('The percentage stated will be removed from the final price'),
+  );
+  
   $form['actions'] = array('#type' => 'actions');
   $form['actions']['submit'] = array(
     '#type' => 'submit',
@@ -99,6 +119,25 @@ function rooms_unit_type_form($form, &$form_state, $unit_type, $op = 'edit') {
   }*/
   return $form;
 }
+
+function rooms_unit_type_form_validate(&$form, &$form_state) {
+  
+  // Validate price field
+  if (!empty($form_state['values']['base_price']) && !is_numeric($form_state['values']['base_price'])) {
+    form_set_error('Base price error', t('%name: you must enter a numeric value for the price.', array('%name' => 'Base Price')));
+  }
+  
+  // Validate discount field
+  if (!empty($form_state['values']['data']['singlediscount']) && !is_numeric($form_state['values']['data']['singlediscount'])) {
+    form_set_error('Discount value error', t('%name: you must enter a numeric value for the discount from 1 to 100%.', array('%name' => 'Single Discount')));
+  }
+  
+  if ((($form_state['values']['data']['singlediscount'] > 100) || ($form_state['values']['data']['singlediscount'] < 1)) && ($form_state['values']['data']['singlediscount'] != '')) {
+    form_set_error('Discount value error', t('%name: you must enter a numeric value for the discount from 1 to 100%.', array('%name' => 'Single Discount')));
+  }
+
+}
+
 
 /**
  * Form API submit callback for the type form.

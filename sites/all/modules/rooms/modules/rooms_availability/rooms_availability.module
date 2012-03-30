@@ -63,6 +63,10 @@ function rooms_availability_permission() {
       'description' => t('Allows users to manage availability settings for Rooms'),
       'restrict access' => TRUE,
     ),
+    'view availability information' => array(
+      'title' => t('View availability information'),
+      'description' => t('Allow users to view availability info (especially via availability reference field)'),
+    )
   );
   return $permissions;
 }
@@ -78,17 +82,17 @@ function rooms_availability_menu() {
     'title' => 'Manage Availability',
     'page callback' =>  'rooms_availability_page',
     'page arguments' => array(4, 6, 7),
-    'access callback' => 'rooms_availability_access',
+    'access callback' => 'rooms_availability_admin_access',
     'access arguments' => array(4),
     'type' => MENU_LOCAL_TASK,
     'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
     'weight' => '20',
   );
   
-  $items['admin/rooms/units/unit/%availability_unit/availability/json/%/%'] = array(
+  $items['rooms/units/unit/%availability_unit/availability/json/%/%'] = array(
     'title' =>  'Availability Event',
     'page callback' => 'rooms_availability_event',
-    'page arguments' => array(4, 7, 8, 9, 10, 11, 12, 13),
+    'page arguments' => array(3, 6, 7, 8, 9, 10, 11, 12),
     'access callback' => 'rooms_availability_access',
     'access arguments' => array(4),
     'type' => MENU_CALLBACK,
@@ -121,12 +125,22 @@ function availability_unit_load($unit_id) {
 
 
 /**
- * Room availability access callback
+ * Room availability admin access callback
  * @todo check unauthorised access for calendar js
- * @todo either improve or remove
+ */ 
+function rooms_availability_admin_access($rooms_unit) {
+  if (user_access('manage booking unit availability')) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+
+/**
+ * Room availability access callback
  */ 
 function rooms_availability_access($rooms_unit) {
-  if (user_access('manage booking unit availability')) {
+  if (user_access('view availability information')) {
     return TRUE;
   }
   return FALSE;
@@ -212,16 +226,23 @@ function rooms_availability_page(RoomsUnit $rooms_unit, $year='', $month='') {
  */
 function update_availability_calendar_form($form, &$form_state, $unit_id, $year, $month) {
   
-  $form['unit_id'] = array(
+  $form['rooms_update_availability'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Update Availability',
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  
+  $form['rooms_update_availability']['unit_id'] = array(
     '#type' => 'hidden',
     '#value' => $unit_id,
   );
   
-  $form['rooms_date_range'] = rooms_date_range_fields();
+  $form['rooms_update_availability']['rooms_date_range'] = rooms_date_range_fields();
   // Unset a js setting
   drupal_add_js(array('rooms' => array('roomsBookingStartDay' => 0)), 'setting');
   
-  $form['unit_state'] = array(
+  $form['rooms_update_availability']['unit_state'] = array(
     '#type' => 'select',
     '#title' => t('Bookable Unit State'),
     '#options' => array(
@@ -233,7 +254,7 @@ function update_availability_calendar_form($form, &$form_state, $unit_id, $year,
     '#description' => t('Choose what state to put the unit in for the dates chosen above'),
   );
   
-  $form['actions'] = array(
+  $form['rooms_update_availability']['actions'] = array(
     '#type' => 'container',
     '#attributes' => array('class' => array('form-actions')),
     '#weight' => 400,
@@ -243,11 +264,11 @@ function update_availability_calendar_form($form, &$form_state, $unit_id, $year,
   // handler to preserve any submit handlers added by a form callback_wrapper.
   $submit = array();
 
-  if (!empty($form['#submit'])) {
-    $submit += $form['#submit'];
+  if (!empty($form['rooms_update_availability']['#submit'])) {
+    $submit += $form['rooms_update_availability']['#submit'];
   }
   
-  $form['actions']['submit'] = array(
+  $form['rooms_update_availability']['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Update Room Availability'),
     '#submit' => $submit + array('update_availability_calendar_form_submit'),
@@ -545,18 +566,27 @@ function rooms_availability_theme() {
  *
  * @todo - Make this depend on a paramenter
  */
-function rooms_availability_assign_id($id) {
+function rooms_availability_assign_id($id, $status) {
   // Add eleven for now - this allows for 10 states that do not
   // refer to a specific booking
   $id = $id + 11;
-  return $id;
+
+  if ($status == '0') {
+    return -($id);
+  }
+  else {
+    return $id;
+  }
 }
 
 
 /**
- * Returns the valid booking id
+ * Given an event state it returns the valid booking id
  */
 function rooms_availability_return_id($id) {
+  // Make sure we are not looking for negative ids;
+  $id = abs($id);
+  
   $id = $id - 11;
   
   return $id;
@@ -568,6 +598,127 @@ function rooms_availability_return_id($id) {
 function rooms_availability_fullcalendar_get_js_path() {
   $fullcalendar_file = array('none' => 'fullcalendar.js', 'min' => 'fullcalendar.min.js');
   return variable_get('rooms_ROOMS_FC_PATH', ROOMS_FC_PATH) . '/' . $fullcalendar_file[variable_get('rooms_fullcalendar_compression_type', 'min')];
+}
+
+/**
+ * Implementation of hook_form_alter()
+ */
+function rooms_availability_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'rooms_booking_settings') {
+    $form['color_statuses'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Calendar Color Codes'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+    );
+    
+    $form['color_statuses']['rooms_not_available_color'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Room no available'),
+      '#size' => 10,
+      '#maxlength' => 7,
+      '#default_value' => variable_get('rooms_not_available_color', '#FF0000'),
+      '#element_validate' => array('rooms_booking_manager_validate_hex_color'), 
+      '#dependency' => array('edit-row-options-colors-legend' => array('type')), 
+      '#prefix' => '<div class="rooms-colorpicker-wrapper">', 
+      '#suffix' => '<div class="rooms-colorpicker"></div></div>', 
+      '#attributes' => array('class' => array('rooms-edit-colorpicker')), 
+      '#attached' => array(
+        // Add Farbtastic color picker.
+        'library' => array(
+          array('system', 'farbtastic'),
+        ),
+        // Add javascript to trigger the colorpicker. 
+        'js' => array(drupal_get_path('module', 'rooms_availability') . '/js/rooms_color.js'),
+      ),
+    );
+
+    $form['color_statuses']['rooms_available_color'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Room Available'),
+      '#size' => 10,
+      '#maxlength' => 7,
+      '#default_value' => variable_get('rooms_available_color', '#8CBF62'),
+      '#element_validate' => array('rooms_booking_manager_validate_hex_color'), 
+      '#dependency' => array('edit-row-options-colors-legend' => array('type')), 
+      '#prefix' => '<div class="rooms-colorpicker-wrapper">', 
+      '#suffix' => '<div class="rooms-colorpicker"></div></div>', 
+      '#attributes' => array('class' => array('rooms-edit-colorpicker')), 
+      '#attached' => array(
+        // Add Farbtastic color picker.
+        'library' => array(
+          array('system', 'farbtastic'),
+        ),
+        // Add javascript to trigger the colorpicker. 
+        'js' => array(drupal_get_path('module', 'rooms_availability') . '/js/rooms_color.js'),
+      ),
+    );
+
+    $form['color_statuses']['rooms_on_request_color'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Room available on request'),
+      '#size' => 10,
+      '#maxlength' => 7,
+      '#default_value' => variable_get('rooms_on_request_color', '#C5C5C5'),
+      '#element_validate' => array('rooms_booking_manager_validate_hex_color'), 
+      '#dependency' => array('edit-row-options-colors-legend' => array('type')), 
+      '#prefix' => '<div class="rooms-colorpicker-wrapper">', 
+      '#suffix' => '<div class="rooms-colorpicker"></div></div>', 
+      '#attributes' => array('class' => array('rooms-edit-colorpicker')), 
+      '#attached' => array(
+        // Add Farbtastic color picker.
+        'library' => array(
+          array('system', 'farbtastic'),
+        ),
+        // Add javascript to trigger the colorpicker. 
+        'js' => array(drupal_get_path('module', 'rooms_availability') . '/js/rooms_color.js'),
+      ),
+    );
+
+    $form['color_statuses']['rooms_anon_booking_color'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Anonymous booking'),
+      '#size' => 10,
+      '#maxlength' => 7,
+      '#default_value' => variable_get('rooms_anon_booking_color', '#481600'),
+      '#element_validate' => array('rooms_booking_manager_validate_hex_color'), 
+      '#dependency' => array('edit-row-options-colors-legend' => array('type')), 
+      '#prefix' => '<div class="rooms-colorpicker-wrapper">', 
+      '#suffix' => '<div class="rooms-colorpicker"></div></div>', 
+      '#attributes' => array('class' => array('rooms-edit-colorpicker')), 
+      '#attached' => array(
+        // Add Farbtastic color picker.
+        'library' => array(
+          array('system', 'farbtastic'),
+        ),
+        // Add javascript to trigger the colorpicker. 
+        'js' => array(drupal_get_path('module', 'rooms_availability') . '/js/rooms_color.js'),
+      ),
+    );
+
+    $form['color_statuses']['rooms_unconfirmed_booking_color'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Unconfirmed booking'),
+      '#size' => 10,
+      '#maxlength' => 7,
+      '#default_value' => variable_get('rooms_unconfirmed_booking_color', '#481600'),
+      '#element_validate' => array('rooms_booking_manager_validate_hex_color'), 
+      '#dependency' => array('edit-row-options-colors-legend' => array('type')), 
+      '#prefix' => '<div class="rooms-colorpicker-wrapper">', 
+      '#suffix' => '<div class="rooms-colorpicker"></div></div>', 
+      '#attributes' => array('class' => array('rooms-edit-colorpicker')), 
+      '#attached' => array(
+        // Add Farbtastic color picker.
+        'library' => array(
+          array('system', 'farbtastic'),
+        ),
+        // Add javascript to trigger the colorpicker. 
+        'js' => array(drupal_get_path('module', 'rooms_availability') . '/js/rooms_color.js'),
+      ),
+    );
+
+
+  }
 }
 
 /**

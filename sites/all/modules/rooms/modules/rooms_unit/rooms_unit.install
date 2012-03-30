@@ -6,6 +6,21 @@
  * the entity types.
  */
 
+ 
+/**
+ * Implements hook_install
+ */
+function rooms_unit_install() {
+  rooms_description_content_type_install();
+}
+
+/**
+ * Implements hook_uninstall
+ */
+function rooms_unit_uninstall() {
+  rooms_description_content_type_uninstall();
+}
+
 
 /**
  * Implements hook_schema().
@@ -57,8 +72,10 @@ function rooms_unit_schema() {
       ),
       'base_price' => array(
         'description' => 'The default cost per night for the unit',
-        'type' => 'int',
+        'type' => 'numeric',
         'not null' => TRUE,
+        'precision' => 10,
+        'scale' => 2,
         'default' => 0,
       ),
       'default_state' => array(
@@ -153,3 +170,154 @@ function rooms_unit_schema() {
 
   return $schema;
 }
+
+
+/**
+ * Create content type for rooms unit type description
+ */
+function rooms_description_content_type_install() {
+  $t = get_t();
+  // We define the node type as an associative array.
+  if (!in_array('room_description', node_type_get_names())) {
+    $room_description = array(
+      'type' => 'room_description',
+      'name' => $t('Room Description'),
+      'base' => 'node_content',
+      'description' => $t('Bookable Unit Description.'),
+      'title_label' => $t('Title'),
+      'custom' => TRUE,
+    );
+  }
+
+  $content_type = node_type_set_defaults($room_description);
+  
+  foreach (_rooms_description_installed_fields() as $field) {
+    field_create_field($field);
+  }
+  
+  foreach (_rooms_description_installed_instances() as $instance) {
+    $instance['entity_type'] = 'node';
+    $instance['bundle'] = $room_description['type'];
+    field_create_instance($instance);
+  }
+
+  node_type_save($content_type);
+}
+
+
+
+/**
+ * Create fields on content type for rooms bookable unit description
+ */
+function _rooms_description_installed_fields() {
+  $t = get_t();
+  return array(
+    'room_description_description' => array(
+      'field_name' => 'room_description_description',
+      'type'        => 'text',
+      'label' => $t('Room type description'), 
+    ),
+    'room_description_image' => array(
+      'field_name' => 'room_description_image',
+      'type'       => 'image',
+      'cardinality' => 1,
+      'label' => 'Image', 
+    ),
+  );
+}
+
+
+function _rooms_description_installed_instances() {
+  $t = get_t();
+  return array(
+    'room_description_description' => array(
+      'field_name' => 'room_description_description',
+      'label'       => $t('A description of this room type unit'),
+      'widget'      => array(
+        'type'    => 'text_textarea',
+      ),
+      'display' => array(
+        'room_description_list' => array(
+          'label' => 'hidden',
+          'type' => 'room_description_description',
+        ),
+      ),
+    ),
+    'room_description_image' => array(
+      'field_name'  => 'room_description_image',
+      'label'       => $t('Image'),
+      'required'    => FALSE,
+      'widget' => array(
+        'type'    => 'image_image',
+        'weight'  => 2.10,
+      ),
+      'display' => array(
+        'room_description_list' => array(
+          'label' => 'hidden',
+          'type' => 'image_link_content__thumbnail',
+        ),
+      ),
+    ),
+  );
+}
+
+
+/*
+ * Remove content type Room Description
+ */
+ 
+function rooms_description_content_type_uninstall() {
+
+  $sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+  $result = db_query($sql, array(':type' => 'room_description'));
+  $nids = array();
+  foreach ($result as $row) {
+    $nids[] = $row->nid;
+  }
+
+  node_delete_multiple($nids);
+
+  foreach (array_keys(_room_description_installed_fields()) as $field) {
+    field_delete_field($field);
+  }
+
+  $instances = field_info_instances('node', 'room_description');
+  foreach ($instances as $instance_name => $instance) {
+    field_delete_instance($instance);
+  }
+
+  node_type_delete('room_description');
+
+  field_purge_batch(1000);
+}
+
+
+
+/**
+ * Changes bace_price field to numeric storage
+ */
+function rooms_unit_update_7001() {
+  $base_price_field_spec = array(
+    'description' => 'The default cost per night for the unit',
+    'type' => 'numeric',
+    'not null' => TRUE,
+    'precision' => 10,
+    'scale' => 2,
+    'default' => 0,
+  );
+    
+  db_change_field('rooms_units', 'base_price', 'base_price', $base_price_field_spec);
+  
+  return t('Schema for the commerce_order and commerce_order_revision tables has been updated.');
+
+}
+
+
+/**
+ * Create rooms_description content type
+ */
+function rooms_unit_update_7002() {
+  rooms_description_content_type_install();  
+}
+
+

@@ -15,12 +15,32 @@ define ('ROOMS_AVAILABLE', 1);
 define ('ROOMS_ON_REQUEST', 2);
 define ('ROOMS_ANON_BOOKED', 3);
 
+define ('ROOMS_UNCONFIRMED_BOOKINGS', -1);
+
 /**
  * Defining responses for Calendar Updated
  */
 define ('ROOMS_BLOCKED', 100);
 define ('ROOMS_UPDATED', 200);
 define ('ROOMS_WRONG_UNIT', 300);
+
+
+
+/**
+ * Implement hook_menu()
+ */
+function rooms_unit_menu() {
+  $items  =  array();
+  
+  $items['admin/rooms/unit-type/description-source'] = array(
+    'title' => 'Unit type description source',
+    'page callback' => 'rooms_unit_type_description_source',
+    'access arguments' => array('administer bookable units'),
+    'type' => MENU_CALLBACK,
+  );
+  
+  return $items;
+}
 
 
 /**
@@ -106,8 +126,14 @@ function rooms_unit_entity_info_alter(&$entity_info) {
       ),
     );
   }
+  // Create custom build mode
+  $entity_info['node']['view modes']['rooms_list'] = array(
+    'label' => t('Rooms Results View'),
+    'custom settings' => FALSE,
+  ); 
 }
-  
+
+ 
 
 /**
  * Implements hook_permission().
@@ -412,7 +438,28 @@ function rooms_unit_theme() {
       'template' => 'rooms_unit-extra-data',
     ),
   );
-}  
+}
+
+
+/**
+ *
+ */
+function rooms_unit_type_description_source($string = '') {
+  $matches = array();
+  
+  if ($string) {
+    $result = db_select('node', 'n')
+      ->fields('n', array('title', 'nid'))
+      ->condition('title', db_like($string) . '%', 'LIKE')
+      ->condition('n.type', 'room_description')
+      ->range(0, 10)
+      ->execute();
+    foreach ($result as $description) {
+      $matches[$description->title . ':' . $description->nid] = check_plain($description->title);
+    }
+  }
+  drupal_json_output($matches);
+}
 
 
 /**
@@ -494,6 +541,7 @@ class RoomsUnitController extends EntityAPIController {
     $unit_type = rooms_unit_type_load($values['type'], TRUE);
     $values['base_price'] = $unit_type->data['base_price'];
     $values['sleeps'] = $unit_type->data['sleeps'];
+    $values['data']['singlediscount'] = $unit_type->data['singlediscount'];
 
     // Add values that are specific to our Room
     $values += array( 
@@ -503,7 +551,6 @@ class RoomsUnitController extends EntityAPIController {
       'title' => '',
       'created' => '',
       'changed' => '',
-      'data' => array(),
     );
     
     $unit = parent::create($values);

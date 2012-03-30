@@ -4,10 +4,10 @@
  * An AvailabilityAgent provides access to the availability functionality of Rooms and
  * lets you query for availability, get pricing information and create products that can be bought.
  *
- * The Agent is essentially a factory creting the appropriate responses for us as needed based on the
+ * The Agent is essentially a factory cretaing the appropriate responses for us as needed based on the
  * requests and the current status of our bookable units.
  *
- * An Agent reasons over a single set of information regarding a booking which are exposes as public
+ * An Agent reasons over a single set of information regarding a booking which are exposed as public
  * variables to make it easy for us to set and or change them.
  */
 class AvailabilityAgent {
@@ -32,7 +32,7 @@ class AvailabilityAgent {
   
   public $units = array();
   
-  public function __construct($start_date, $end_date, $group_size = 2, $booking_units = 1, $valid_states = array(ROOMS_AVAILABLE, ROOMS_ON_REQUEST), $unit_types = array()) {
+  public function __construct($start_date, $end_date, $group_size = 1, $booking_units = 1, $valid_states = array(ROOMS_AVAILABLE, ROOMS_ON_REQUEST, ROOMS_UNCONFIRMED_BOOKINGS), $unit_types = array()) {
     $this->valid_states = $valid_states;
     $this->start_date = new DateTime($start_date);
     $checkout_date = new DateTime($end_date);
@@ -45,80 +45,13 @@ class AvailabilityAgent {
     $this->unit_types = $unit_types;
   }
   
+
   /**
-   * Creates products for each booking unit
-   *
-   * @param $unit_id
-   * The id of the booking unit for which we are creating a product
-   *
-   * @param $status
-   * The status of the room - this will determine the order status
-   *
-   * @returns A Commerce Product
+   * Sets the valid states for an availability search - default is "ROOMS_AVAILABLE" and
+   * "ROOMS_ON_REQUEST"
    */
-  public function createProduct($unit_id, $status) {
-
-    $unit = rooms_unit_load($unit_id);
-    
-    $unit_type = rooms_unit_type_load($unit->type);
-    
-    // Set the correct departure date for the product name (checkout day)
-    $dd = new DateTime($this->end_date->format('Y-m-d'));
-    $dd->add(new DateInterval('P1D'));
-  
-    // Create product
-    $room_booking = commerce_product_new('rooms_booking');
-    // SKU's need to be unique so we are adding system time to each product
-    $room_booking->sku = 'UNIT' . $unit_id . ' - ' . time();
-    // Product name - we set something that will make sense to the user here - this needs to be parametrised of course
-    $room_booking->title = 'Booking for ' . $unit_type->label . ' Arrival: ' . $this->start_date->format('Y-m-d') . ' Departure: ' . $dd->format('Y-m-d');
-    // Save the product and then we will add fields to it.
-    commerce_product_save($room_booking);
-  
-    // Calculate the price
-    $price_calendar = new UnitPricingCalendar($unit_id);
-    $price = $price_calendar->calculatePrice($this->start_date, $this->end_date);
-    // Convert to integer value as this is what Commerce expects
-    $price = commerce_currency_decimal_to_amount($price, commerce_default_currency());
-        
-    $commerce_price = array(
-      'und' => array(
-          array( 
-          'amount' => $price,
-          'currency_code' => commerce_default_currency(),
-          'data' => array(''),
-        ),
-      ),
-    );
-    
-    $commerce_dates = array(
-      'und' => array( array( 
-        'value' => $this->start_date->format('Y-m-d'),
-        'value2' => $this->end_date->format('Y-m-d'),
-      )),
-    );
-  
-    $commerce_unit = array(
-      'und' => array( array(
-        'value' => $unit->unit_id,
-      )),
-    );
-  
-    $commerce_status = array(
-      'und' => array(array(
-        'value' => $status,
-      )),
-    );
-    
-    $room_booking->commerce_price = $commerce_price;
-    $room_booking->rooms_booking_dates = $commerce_dates;
-    $room_booking->rooms_booked_unit_id = $commerce_unit;
-    $room_booking->rooms_booked_status = $commerce_status;
-
-    // Save the fields as well and return the product
-    field_attach_update('commerce_product', $room_booking);
-    
-    return $room_booking;  
+  public function setValidStates($states = array(ROOMS_AVAILABLE, ROOMS_ON_REQUEST, ROOMS_UNCONFIRMED_BOOKINGS)) {
+    $this->valid_states = $states;
   }
   
   /**
@@ -196,7 +129,18 @@ class AvailabilityAgent {
         $state_diff = array_diff($states, $this->valid_states);
         if (count($state_diff) == 0) {
           // Calculate the price as well to add to the array
-          $price_calendar = new UnitPricingCalendar($unit->unit_id);
+          
+          // First set up price modifiers
+          $price_modifiers = array();
+
+          if ($this->group_size == 1) {
+            $price_modifiers['single'] = array('#type' => ROOMS_PRICE_SINGLE_OCCUPANCY);
+          }
+          
+          // Give other modules a chance to change the price modifiers
+          drupal_alter('rooms_price_modifier', $price_modifiers);
+          
+          $price_calendar = new UnitPricingCalendar($unit->unit_id, $price_modifiers);
           $price = $price_calendar->calculatePrice($this->start_date, $this->end_date);
           $units[$unit->type][$price][$unit->unit_id]['unit'] = $unit;
           $units[$unit->type][$price][$unit->unit_id]['price'] = $price; 
