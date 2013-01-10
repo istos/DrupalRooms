@@ -1,7 +1,12 @@
 <?php
 
 /**
- * Implementation of hook_node_info().
+ * @file
+ * Examples and test folder for migration into date fields.
+ */
+
+/**
+ * Implements hook_node_info().
  */
 function date_migrate_example_node_info() {
   $items = array(

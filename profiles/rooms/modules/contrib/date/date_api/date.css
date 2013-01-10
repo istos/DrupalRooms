@@ -13,14 +13,10 @@
   padding: 0;
 }
 .container-inline-date > .form-item {
-  border: 1px #dedede solid;
   display: inline-block;
   margin-right: 0.5em; /* LTR */
   margin-bottom: 10px;
   vertical-align: top;
-}
-.views-exposed-form .container-inline-date > .form-item {
-  border:none;
 }
 .container-inline-date .form-item .form-item {
   float: left; /* LTR */
@@ -57,9 +53,10 @@
 /* The exposed Views form doesn't need some of these styles */
 .container-inline-date .date-padding {
   padding: 10px;
+  float: left;
 }
 .views-exposed-form .container-inline-date .date-padding {
-  padding: 0:
+  padding: 0;
 }
 
 /* Fixes for date popup css so it will behave in Drupal */
@@ -91,54 +88,8 @@ span.date-display-start {
 span.date-display-end {
 }
 
-.date-repeat-input {
-  float: left; /* LTR */
-  margin-right: 5px; /* LTR */
-  width: auto;
-}
-.date-repeat-input select {
-  min-width: 7em;
-}
-.date-repeat fieldset {
-  clear: both;
-  float: none;
-}
-
-.date-views-filter-wrapper {
-  min-width: 250px;
-}
-.date-views-filter input {
-  float: left !important; /* LTR */
-  margin-right: 2px !important; /* LTR */
-  min-width: 12em;
-  padding: 0 !important;
-  width: 12em;
-}
-
-/* Give the navigation bar a little extra padding below so it will clear the new contextual links overlay of the teasers below it. */
-.date-nav {
-  clear: both;
-  padding-bottom: 1.5em;
-  width: 100%;
-}
-.date-nav div.date-prev {
-  float: left; /* LTR */
-  text-align: left; /* LTR */
-  width: 24%;
-}
-.date-nav div.date-next {
-  float: right; /* LTR */
-  text-align: right; /* LTR */
-  width: 24%;
-}
-.date-nav div.date-heading {
-  float: left; /* LTR */
-  text-align: center;
-  width: 50%;
-}
-.date-nav div.date-heading h3 {
-  margin: 0;
-  padding: 0;
+.date-prefix-inline {
+  display: inline-block;
 }
 
 .date-clear {

@@ -2,33 +2,33 @@
 /**
  * @file
  * Defines date-related Views data and plugins:
- * 
+ *
  * Date argument:
- *   A generic date argument that has an option to select one or more 
- *   Views date fields to filter on, automatically adds them to the view, 
- *   and then filters the view by the value of the selected field(s). 
+ *   A generic date argument that has an option to select one or more
+ *   Views date fields to filter on, automatically adds them to the view,
+ *   and then filters the view by the value of the selected field(s).
  *   The flexible argument will accept and evaluate most ISO date
- *   and period formats, like 2009-05-01, 2008-W25, P1W. 
- * 
+ *   and period formats, like 2009-05-01, 2008-W25, P1W.
+ *
  * Date filter:
- *   A generic date filter that has an option to select a 
+ *   A generic date filter that has an option to select a
  *   Views date field to filter on, with a choice of a widget to use
- *   for the filter form and an option to set the default value to 
- *   a set date or something like 'now +90 days' . If the operator is 
+ *   for the filter form and an option to set the default value to
+ *   a set date or something like 'now +90 days' . If the operator is
  *   set to 'between' or 'not between' you can set a default value for
- *   both the start and end dates. 
- * 
+ *   both the start and end dates.
+ *
  * Current date argument default
- *   Adds a default option to set the argument to the current date 
+ *   Adds a default option to set the argument to the current date
  *   when the argument is empty.
- * 
+ *
  * Date navigation attachment
- *   Navigation that can be attached to any display to create back/next 
+ *   Navigation that can be attached to any display to create back/next
  *   links by date, requires the date argument and uses the current
  *   date argument default to set a starting point for the view.
  */
 /**
- * Implementation of hook_views_plugins
+ * Implements hook_views_plugins
  */
 function date_views_views_plugins() {
   $path = drupal_get_path('module', 'date_views');
@@ -75,7 +75,7 @@ function date_views_views_plugins() {
         'uses row plugin' => FALSE,
         'uses fields' => FALSE,
         'uses options' => TRUE,
-        'type' => 'date_nav', 
+        'type' => 'date_nav',
         'even empty' => TRUE,
       ),
     ),
@@ -83,14 +83,14 @@ function date_views_views_plugins() {
 }
 
 /**
- * Implementation of hook_views_data()
+ * Implements hook_views_data()
  */
 function date_views_views_data() {
   $data = array();
 
-  $tables = module_invoke_all('date_views_tables');
+  $tables = date_views_base_tables();
 
-  foreach ($tables as $base_table) {
+  foreach ($tables as $base_table => $entity) {
     // The flexible date argument.
     $data[$base_table]['date_argument'] = array(
       'group' => t('Date'),
@@ -102,7 +102,7 @@ function date_views_views_data() {
         'is date' => TRUE,
         //'skip base' => $base_table,
       ),
-    );  
+    );
     // The flexible date filter.
     $data[$base_table]['date_filter'] = array(
       'group' => t('Date'),
@@ -114,7 +114,7 @@ function date_views_views_data() {
         'is date' => TRUE,
         //'skip base' => $base_table,
       ),
-    ); 
+    );
   }
 
   return $data;
@@ -140,33 +140,12 @@ function date_views_views_data_alter(&$data) {
 }
 
 /**
- *  Identify all potential date/timestamp fields and cache the data.
- */
-function date_views_fields($base = 'node', $reset = FALSE) {
-  static $fields = array();
-  $empty = array('name' => array(), 'alias' => array());
-  module_load_include('inc', 'date_views', 'includes/date_views_fields');
-
-  if (empty($fields[$base]) || $reset) {
-    $cid = 'date_views_fields_' . $base;
-    if (!$reset && $cached = cache_get($cid, 'cache_views')) {
-      $fields[$base] = $cached->data;
-    }
-    else {
-      $fields[$base] = _date_views_fields($base);
-    }
-  }
-  // Make sure that empty values will be arrays in he expected format.
-  return !empty($fields) && !empty($fields[$base]) ? $fields[$base] : $empty;
-}
-
-/**
  * Central function for setting up the right timezone values
  * in the SQL date handler.
- * 
+ *
  * The date handler will use this information to decide if the
  * database value needs a timezone conversion.
- * 
+ *
  * In Views, we will always be comparing to a local date value,
  * so the goal is to convert the database value to the right
  * value to compare to the local value.

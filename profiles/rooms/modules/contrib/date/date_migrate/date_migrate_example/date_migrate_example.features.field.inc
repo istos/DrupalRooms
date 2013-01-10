@@ -1,7 +1,12 @@
 <?php
 
 /**
- * Implementation of hook_field_default_fields().
+ * @file
+ * Examples and test folder for migration into date fields.
+ */
+
+/**
+ * Implements hook_field_default_fields().
  */
 function date_migrate_example_field_default_fields() {
   $fields = array();
@@ -114,7 +119,7 @@ function date_migrate_example_field_default_fields() {
           'label' => 'above',
           'module' => 'date',
           'settings' => array(
-            'format_type' => 'long',
+            'format_type' => 'medium',
             'fromto' => 'both',
             'multiple_from' => '',
             'multiple_number' => '',
@@ -197,7 +202,7 @@ function date_migrate_example_field_default_fields() {
           'label' => 'above',
           'module' => 'date',
           'settings' => array(
-            'format_type' => 'long',
+            'format_type' => 'medium',
             'fromto' => 'both',
             'multiple_from' => '',
             'multiple_number' => '',
@@ -280,7 +285,7 @@ function date_migrate_example_field_default_fields() {
           'label' => 'above',
           'module' => 'date',
           'settings' => array(
-            'format_type' => 'long',
+            'format_type' => 'medium',
             'fromto' => 'both',
             'multiple_from' => '',
             'multiple_number' => '',
@@ -364,7 +369,7 @@ function date_migrate_example_field_default_fields() {
           'label' => 'above',
           'module' => 'date',
           'settings' => array(
-            'format_type' => 'long',
+            'format_type' => 'medium',
             'fromto' => 'both',
             'multiple_from' => '',
             'multiple_number' => '',
@@ -447,7 +452,7 @@ function date_migrate_example_field_default_fields() {
           'label' => 'above',
           'module' => 'date',
           'settings' => array(
-            'format_type' => 'long',
+            'format_type' => 'medium',
             'fromto' => 'both',
             'multiple_from' => '',
             'multiple_number' => '',
@@ -530,7 +535,7 @@ function date_migrate_example_field_default_fields() {
           'label' => 'above',
           'module' => 'date',
           'settings' => array(
-            'format_type' => 'long',
+            'format_type' => 'medium',
             'fromto' => 'both',
             'multiple_from' => '',
             'multiple_number' => '',
@@ -613,7 +618,7 @@ function date_migrate_example_field_default_fields() {
           'label' => 'above',
           'module' => 'date',
           'settings' => array(
-            'format_type' => 'long',
+            'format_type' => 'medium',
             'fromto' => 'both',
             'multiple_from' => '',
             'multiple_number' => '',
