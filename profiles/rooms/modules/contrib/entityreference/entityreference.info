@@ -1,22 +1,30 @@
 name = Entity Reference
 description = Provides a field that can reference other entities.
 core = 7.x
+package = Fields
 dependencies[] = entity
 dependencies[] = ctools
 
 ; Migrate handler.
 files[] = entityreference.migrate.inc
 
-; Our default entity handler.
-files[] = entityreference.handler.inc
-files[] = handler/base.inc
+; Our plugins interfaces and abstract implementations.
+files[] = plugins/selection/abstract.inc
+files[] = plugins/selection/views.inc
+files[] = plugins/behavior/abstract.inc
+
+files[] = views/entityreference_plugin_display.inc
+files[] = views/entityreference_plugin_style.inc
+files[] = views/entityreference_plugin_row_fields.inc
 
 ; Tests.
 files[] = tests/entityreference.handlers.test
+files[] = tests/entityreference.taxonomy.test
+files[] = tests/entityreference.admin.test
 
-; Information added by drupal.org packaging script on 2011-09-16
-version = "7.x-1.0-alpha2"
+; Information added by drupal.org packaging script on 2012-11-18
+version = "7.x-1.0"
 core = "7.x"
 project = "entityreference"
-datestamp = "1316171203"
+datestamp = "1353230808"
 

@@ -32,7 +32,20 @@ function entityreference_field_views_data($field) {
     }
   }
 
+  // Invoke the behaviors to allow them to change the properties.
+  foreach (entityreference_get_behavior_handlers($field) as $handler) {
+    $handler->views_data_alter($data, $field);
+  }
+
   return $data;
+}
+
+/**
+ * Options callback for Views handler views_handler_filter_in_operator.
+ */
+function entityreference_views_handler_options_list($field_name) {
+  $field = field_info_field($field_name);
+  return entityreference_options_list($field);
 }
 
 /**
@@ -70,4 +83,54 @@ function entityreference_field_views_data_views_data_alter(&$data, $field) {
       );
     }
   }
+}
+
+/**
+ * Implements hook_views_plugins().
+ */
+function entityreference_views_plugins() {
+  $plugins = array(
+    'display' => array(
+      'entityreference' => array(
+        'title' => t('Entity Reference'),
+        'admin' => t('Entity Reference Source'),
+        'help' => 'Selects referenceable entities for an entity reference field',
+        'handler' => 'entityreference_plugin_display',
+        'uses hook menu' => FALSE,
+        'use ajax' => FALSE,
+        'use pager' => FALSE,
+        'accept attachments' => FALSE,
+        // Custom property, used with views_get_applicable_views() to retrieve
+        // all views with a 'Entity Reference' display.
+        'entityreference display' => TRUE,
+      ),
+    ),
+    'style' => array(
+      'entityreference_style' => array(
+        'title' => t('Entity Reference list'),
+        'help' => 'Returns results as a PHP array of labels and rendered rows.',
+        'handler' => 'entityreference_plugin_style',
+        'theme' => 'views_view_unformatted',
+        'uses row plugin' => TRUE,
+        'uses fields' => TRUE,
+        'uses options' => TRUE,
+        'type' => 'entityreference',
+        'even empty' => TRUE,
+      ),
+    ),
+    'row' => array(
+      'entityreference_fields' => array(
+        'title' => t('Inline fields'),
+        'help' => t('Displays the fields with an optional template.'),
+        'handler' => 'entityreference_plugin_row_fields',
+        'theme' => 'views_view_fields',
+        'theme path' => drupal_get_path('module', 'views') . '/theme',
+        'theme file' => 'theme.inc',
+        'uses fields' => TRUE,
+        'uses options' => TRUE,
+        'type' => 'entityreference',
+      ),
+    ),
+  );
+  return $plugins;
 }
