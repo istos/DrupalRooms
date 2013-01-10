@@ -85,6 +85,7 @@ function commerce_product_entity_info() {
         'bundle' => 'type',
         'label' => 'title',
         'revision' => 'revision_id',
+        'language' => 'language',
       ),
       'bundle keys' => array(
         'bundle' => 'type',
@@ -115,6 +116,11 @@ function commerce_product_entity_info() {
         'locale' => TRUE,
         'entity_translation' => array(
           'class' => 'EntityTranslationCommerceProductHandler',
+          'bundle callback' => 'commerce_product_entity_translation_supported_type',
+          'default settings' => array(
+            'default_language' => LANGUAGE_NONE,
+            'hide_language_selector' => FALSE,
+          ),
         ),
       ),
 
@@ -231,6 +237,12 @@ function commerce_product_field_extra_fields() {
           'theme' => 'commerce_product_title',
           'weight' => -5,
         ),
+        'status' => array(
+          'label' => t('Status'),
+          'description' => t('Whether the product is active or disabled'),
+          'theme' => 'commerce_product_status',
+          'weight' => 5,
+        ),
       ),
     );
   }
@@ -333,6 +345,9 @@ function commerce_product_configure_product_fields($modules = NULL) {
     $modules = module_implements('commerce_product_type_info');
   }
 
+  // Reset the product type cache to get types added by newly enabled modules.
+  commerce_product_types_reset();
+
   // Loop through all the enabled modules.
   foreach ($modules as $module) {
     // If the module implements hook_commerce_product_type_info()...
@@ -361,8 +376,12 @@ function commerce_product_types() {
     // Find product types defined by hook_commerce_product_type_info().
     foreach (module_implements('commerce_product_type_info') as $module) {
       foreach (module_invoke($module, 'commerce_product_type_info') as $type => $product_type) {
-        // Set the module each product type is defined by if it isn't set yet.
-        $product_type += array('module' => $module);
+        // Set the module each product type is defined by and revision handling
+        // if they aren't set yet.
+        $product_type += array(
+          'module' => $module,
+          'revision' => 1,
+        );
         $product_types[$type] = $product_type;
       }
     }
@@ -380,6 +399,7 @@ function commerce_product_types() {
 function commerce_product_types_reset() {
   $product_types = &drupal_static('commerce_product_types');
   $product_types = NULL;
+  entity_info_cache_clear();
 }
 
 /**
@@ -510,24 +530,6 @@ function commerce_product_load_multiple($product_ids = array(), $conditions = ar
   }
 
   return entity_load('commerce_product', $product_ids, $conditions, $reset);
-}
-
-/**
- * Generate an array for rendering the given product.
- *
- * @param $product
- *   A fully loaded product object.
- * @param $view_mode
- *   The view mode for displaying the product, 'full', 'node_full',
- *     'node_teaser', 'node_rss'...
- *
- * @return
- *   An array as expected by drupal_render().
- *
- * @deprecated since 7.x-1.0-rc1
- */
-function commerce_product_build_content($product, $view_mode = 'full') {
-  return entity_get_controller('commerce_product')->view(array($product->product_id => $product), $view_mode);
 }
 
 /**
@@ -898,13 +900,7 @@ function _commerce_product_match_products_standard($instance, $string = '', $mat
  * Access callback: determines access to a product's translation tab.
  */
 function commerce_product_entity_translation_tab_access($product) {
-  if (!empty($product->language) && $product->language != LANGUAGE_NONE) {
-    if (commerce_product_entity_translation_supported_type($product->type)) {
-      return entity_translation_tab_access('commerce_product');
-    }
-  }
-
-  return FALSE;
+  return entity_translation_tab_access('commerce_product', $product);
 }
 
 /**
@@ -932,4 +928,11 @@ function template_preprocess_commerce_product_sku(&$variables) {
  */
 function template_preprocess_commerce_product_title(&$variables) {
   $variables['title'] = check_plain($variables['title']);
+}
+
+/**
+ * Converts the product status integer to a string before output.
+ */
+function template_preprocess_commerce_product_status(&$variables) {
+  $variables['status'] = empty($variables['status']) ? t('Disabled') : t('Active');
 }

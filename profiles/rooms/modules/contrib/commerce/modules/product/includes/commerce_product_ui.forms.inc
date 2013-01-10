@@ -74,7 +74,7 @@ function commerce_product_ui_product_type_form($form, &$form_state, $product_typ
     $form['product_type']['multilingual'] = array(
       '#type' => 'radios',
       '#title' => t('Multilingual support'),
-      '#description' => t('If <em>Entity translation</em> is enabled it will be possible to provide a different version of the same product for each available language.') . '<br />' . t('Existing products will not be affected by changing this option.'),
+      '#description' => t('If <em>Entity translation</em> is enabled it will be possible to provide a different version of the same product for each available language.') . '<br />' . t('You can find more options in the <a href="!url">entity translation settings</a>.', array('!url' => url('admin/config/regional/entity_translation'))) . '<br />' . t('Existing products will not be affected by changing this option.'),
       '#options' => array(
         0 => t('Disabled'),
         ENTITY_TRANSLATION_ENABLED => t('Enabled via <em>Entity translation</em>'),
@@ -100,7 +100,7 @@ function commerce_product_ui_product_type_form($form, &$form_state, $product_typ
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save product type'),
-    '#submit' => $submit + array('commerce_product_ui_product_type_form_submit'),
+    '#submit' => array_merge($submit, array('commerce_product_ui_product_type_form_submit')),
   );
 
   if (!empty($form_state['product_type']['type'])) {
@@ -108,7 +108,7 @@ function commerce_product_ui_product_type_form($form, &$form_state, $product_typ
       '#type' => 'submit',
       '#value' => t('Delete product type'),
       '#suffix' => l(t('Cancel'), 'admin/commerce/products/types'),
-      '#submit' => $submit + array('commerce_product_ui_product_type_form_delete_submit'),
+      '#submit' => array_merge($submit, array('commerce_product_ui_product_type_form_delete_submit')),
       '#weight' => 45,
     );
   }
@@ -117,7 +117,7 @@ function commerce_product_ui_product_type_form($form, &$form_state, $product_typ
       '#type' => 'submit',
       '#value' => t('Save and add fields'),
       '#suffix' => l(t('Cancel'), 'admin/commerce/products/types'),
-      '#submit' => $submit + array('commerce_product_ui_product_type_form_submit'),
+      '#submit' => array_merge($submit, array('commerce_product_ui_product_type_form_submit')),
       '#weight' => 45,
     );
   }

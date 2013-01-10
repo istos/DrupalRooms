@@ -4,6 +4,10 @@
  * @file
  * Builds placeholder replacement tokens for UI bound order-related data.
  */
+
+/**
+ * Implements hook_token_info().
+ */
 function commerce_order_ui_token_info() {
   $order = array();
 
@@ -25,7 +29,9 @@ function commerce_order_ui_token_info() {
   );
 }
 
-
+/**
+ * Implements hook_tokens().
+ */
 function commerce_order_ui_tokens($type, $tokens, array $data = array(), array $options = array()) {
   $url_options = array('absolute' => TRUE);
 
@@ -46,13 +52,17 @@ function commerce_order_ui_tokens($type, $tokens, array $data = array(), array $
       switch ($name) {
         // @deprecated since 7.x-1.2; use [commerce-order:customer-url] instead.
         case 'url':
-          $replacements[$original] = url('user/' . $order->uid . '/orders/' . $order->order_id, $url_options);
-          break;
         case 'customer-url':
-          $replacements[$original] = url('user/' . $order->uid . '/orders/' . $order->order_id, $url_options);
+          if ($uri = commerce_order_uri($order)) {
+            $path = $uri['path'];
+          }
+          else {
+            $path = 'user/' . $order->uid . '/orders/' . $order->order_id;
+          }
+          $replacements[$original] = url($path, $url_options);
           break;
         case 'admin-url':
-          $replacements[$original] = url('admin/commerce/orders/' . $order->order_id);
+          $replacements[$original] = url('admin/commerce/orders/' . $order->order_id, $url_options);
           break;
       }
     }

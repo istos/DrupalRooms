@@ -137,7 +137,7 @@ function commerce_order_order_form($form, &$form_state, $order) {
     '#type' => 'checkbox',
     '#title' => t('Create new revision on update'),
     '#description' => t('If an update log message is entered, a revision will be created even if this is unchecked.'),
-    '#default_value' => TRUE,
+    '#default_value' => variable_get('commerce_order_auto_revision', TRUE),
     '#access' => user_access('administer commerce_order entities'),
   );
   $form['order_history']['date'] = array(
@@ -175,7 +175,7 @@ function commerce_order_order_form($form, &$form_state, $order) {
   $form['actions']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save order', array(), array('context' => 'a drupal commerce order')),
-    '#submit' => $submit + array('commerce_order_order_form_submit'),
+    '#submit' => array_merge($submit, array('commerce_order_order_form_submit')),
     '#weight' => 40,
   );
 

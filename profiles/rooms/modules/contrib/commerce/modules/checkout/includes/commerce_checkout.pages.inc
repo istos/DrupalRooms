@@ -21,7 +21,7 @@ function commerce_checkout_router($order, $checkout_page = NULL) {
   // could return a 403, but then the user would know they've identified a
   // potentially valid checkout URL.
   if (!commerce_checkout_access($order)) {
-    return drupal_not_found();
+    return MENU_NOT_FOUND;
   }
 
   // If the user is attempting to access an inaccessible page for their order,
@@ -35,7 +35,7 @@ function commerce_checkout_router($order, $checkout_page = NULL) {
       return drupal_goto($target_uri);
     }
     else {
-      return drupal_access_denied();
+      return MENU_ACCESS_DENIED;
     }
   }
 
@@ -120,11 +120,19 @@ function commerce_checkout_form($form, &$form_state, $order, $checkout_page) {
           $show_errors_message = TRUE;
         }
 
-        $form_state['storage']['themed_messages'][$pane_id] = theme('status_messages');
+        // Rendering status messages clears the session of messages, so they
+        // will not be visible if the user is redirected. We can at least not
+        // render here when we detect the global variable added by Rules to
+        // handle redirects, though modules implementing redirects will still
+        // encounter the same problem of "lost" messages.
+        if (!isset($GLOBALS['_rules_action_drupal_goto_do'])){
+          $form_state['storage']['themed_messages'][$pane_id] = theme('status_messages');
 
-        $form[$pane_id . '_messages'] = array(
-          '#markup' =>  $form_state['storage']['themed_messages'][$pane_id],
-        );
+          $pane_form[$pane_id . '_messages'] = array(
+            '#markup' =>  $form_state['storage']['themed_messages'][$pane_id],
+            '#weight' => -50,
+          );
+        }
       }
 
       // Create a fieldset for the pane and add the form data defined in the
@@ -165,6 +173,7 @@ function commerce_checkout_form($form, &$form_state, $order, $checkout_page) {
       '#type' => 'submit',
       '#value' => $checkout_page['submit_value'],
       '#attributes' => array('class' => array('checkout-continue')),
+      '#suffix' => '<span class="checkout-processing element-invisible"></span>',
       '#validate' => array('commerce_checkout_form_validate'),
       '#submit' => array('commerce_checkout_form_submit'),
     );
@@ -320,7 +329,7 @@ function commerce_checkout_form_submit($form, &$form_state) {
     // If there is another checkout page...
     if ($checkout_page['next_page']) {
       // Update the order status to reflect the next checkout page.
-      $order = commerce_order_status_update($order, 'checkout_' . $checkout_page['next_page'], FALSE, TRUE, t('Customer continued to the next checkout page via a submit button.'));
+      $order = commerce_order_status_update($order, 'checkout_' . $checkout_page['next_page'], FALSE, NULL, t('Customer continued to the next checkout page via a submit button.'));
 
       // If it happens to be the complete page, process completion now.
       if ($checkout_page['next_page'] == 'complete') {
@@ -350,7 +359,7 @@ function commerce_checkout_form_back_submit($form, &$form_state) {
     }
 
     // Update the order status for the checkout step.
-    $form_state['order'] = commerce_order_status_update($order, 'checkout_' . $previous_page['page_id'], FALSE, TRUE, t('Customer returned to the previous checkout page via a submit button.'));
+    $form_state['order'] = commerce_order_status_update($order, 'checkout_' . $previous_page['page_id'], FALSE, NULL, t('Customer returned to the previous checkout page via a submit button.'));
   }
 }
 
@@ -358,14 +367,18 @@ function commerce_checkout_form_back_submit($form, &$form_state) {
  * Special submit handler for the cancel button to avoid processing orders.
  */
 function commerce_checkout_form_cancel_submit($form, &$form_state) {
-  // Set the order status back to the first step of checkout.
   $order = commerce_order_load($form_state['order']->order_id);
-  $form_state['order'] = commerce_order_status_update($order, 'checkout_checkout', TRUE);
+
+  // Set the order status back to the first checkout page's status.
+  $order_state = commerce_order_state_load('checkout');
+  $form_state['order'] = commerce_order_status_update($order, $order_state['default_status'], TRUE);
 
   // Skip saving in the status update and manually save here to force a save
   // even when the status doesn't actually change.
-  $form_state['order']->revision = TRUE;
-  $form_state['order']->log = t('Customer manually canceled the checkout process.');
+  if (variable_get('commerce_order_auto_revision', TRUE)) {
+    $form_state['order']->revision = TRUE;
+    $form_state['order']->log = t('Customer manually canceled the checkout process.');
+  }
 
   commerce_order_save($form_state['order']);
 

@@ -10,14 +10,16 @@ dependencies[] = options
 core = 7.x
 
 ; Views handlers
+files[] = includes/views/handlers/commerce_product_reference_handler_filter_node_is_product_display.inc
+files[] = includes/views/handlers/commerce_product_reference_handler_filter_node_type.inc
 files[] = includes/views/handlers/commerce_product_reference_handler_filter_product_line_item_type.inc
 
 ; Simple tests
 files[] = tests/commerce_product_reference.test
 
-; Information added by drupal.org packaging script on 2012-01-25
-version = "7.x-1.2"
+; Information added by drupal.org packaging script on 2012-10-22
+version = "7.x-1.4"
 core = "7.x"
 project = "commerce"
-datestamp = "1327528840"
+datestamp = "1350864676"
 

@@ -119,7 +119,7 @@ function commerce_checkout_permission() {
   $permissions = array(
     'administer checkout' => array(
       'title' => t('Administer checkout'),
-      'description' => t('Access checkout for any order and configure checkout settings including the layout of the checkout form.'),
+      'description' => t('Configure checkout settings including the layout of the checkout form.'),
       'restrict access' => TRUE,
     ),
     'access checkout' => array(
@@ -202,15 +202,20 @@ function commerce_checkout_forms($form_id, $args) {
 /**
  * Implements hook_form_alter().
  */
-function commerce_checkout_form_alter(&$form, &$form_values, $form_id) {
+function commerce_checkout_form_alter(&$form, &$form_state, $form_id) {
   if (strpos($form_id, 'views_form_commerce_cart_form_') === 0) {
-    $form['actions']['checkout'] = array(
-      '#type' => 'submit',
-      '#value' => t('Checkout'),
-      '#weight' => 5,
-      '#access' => user_access('access checkout'),
-      '#submit' => array_merge($form['#submit'], array('commerce_checkout_line_item_views_form_submit')),
-    );
+    // Only add the Checkout button if the cart form View shows line items.
+    $view = reset($form_state['build_info']['args']);
+
+    if (!empty($view->result)) {
+      $form['actions']['checkout'] = array(
+        '#type' => 'submit',
+        '#value' => t('Checkout'),
+        '#weight' => 5,
+        '#access' => user_access('access checkout'),
+        '#submit' => array_merge($form['#submit'], array('commerce_checkout_line_item_views_form_submit')),
+      );
+    }
   }
 }
 
@@ -218,20 +223,24 @@ function commerce_checkout_form_alter(&$form, &$form_values, $form_id) {
  * Submit handler used to redirect to the checkout page.
  */
 function commerce_checkout_line_item_views_form_submit($form, &$form_state) {
-  // Set the order status to the first checkout page.
   $order = commerce_order_load($form_state['order']->order_id);
-  $form_state['order'] = commerce_order_status_update($order, 'checkout_checkout', TRUE);
+
+  // Set the order status to the first checkout page's status.
+  $order_state = commerce_order_state_load('checkout');
+  $form_state['order'] = commerce_order_status_update($order, $order_state['default_status'], TRUE);
 
   // Skip saving in the status update and manually save here to force a save
   // even when the status doesn't actually change.
-  $form_state['order']->revision = TRUE;
-  $form_state['order']->log = t('Customer proceeded to checkout using a submit button.');
+  if (variable_get('commerce_order_auto_revision', TRUE)) {
+    $form_state['order']->revision = TRUE;
+    $form_state['order']->log = t('Customer proceeded to checkout using a submit button.');
+  }
 
   commerce_order_save($form_state['order']);
 
   // Redirect to the checkout page if specified.
   if ($form_state['triggering_element']['#value'] == $form['actions']['checkout']['#value']) {
-    $form_state['redirect'] = 'checkout';
+    $form_state['redirect'] = 'checkout/' . $order->order_id;
   }
 }
 
@@ -262,7 +271,7 @@ function commerce_checkout_commerce_order_state_info() {
     'title' => t('Checkout'),
     'description' => t('Orders in this state have begun but not completed the checkout process.'),
     'weight' => -3,
-    'default_status' => 'checkout_checkout',
+    'default_status' => 'checkout_' . commerce_checkout_first_checkout_page(),
   );
 
   return $order_states;
@@ -411,6 +420,13 @@ function commerce_checkout_pages() {
 }
 
 /**
+ * Returns the page ID of the first checkout page sorted by weight.
+ */
+function commerce_checkout_first_checkout_page() {
+  return key(commerce_checkout_pages());
+}
+
+/**
  * Returns a checkout page object.
  *
  * @param $page_id
@@ -438,16 +454,24 @@ function commerce_checkout_page_load($page_id) {
  *   An array of conditions to filter the returned list by; for example, if you
  *     specify 'enabled' => TRUE in the array, then only checkout panes with an
  *     enabled value equal to TRUE would be included.
+ * @param $skip_saved_data
+ *   A boolean that will allow the retrieval of checkout panes directly from
+ *   code. Specifically, it will skip the cache and also prevent configured
+ *   checkout panes data from merging.
  *
  * @return
  *   The array of checkout pane objects, keyed by pane ID.
  */
-function commerce_checkout_panes($conditions = array()) {
-  $checkout_panes = &drupal_static(__FUNCTION__);
+function commerce_checkout_panes($conditions = array(), $skip_saved_data = FALSE) {
+  if (!$skip_saved_data) {
+    $checkout_panes = &drupal_static(__FUNCTION__);
+  }
 
   // Cache the saved checkout pane data if it hasn't been loaded yet.
   if (!isset($checkout_panes)) {
-    $saved_panes = db_query('SELECT * FROM {commerce_checkout_pane}')->fetchAllAssoc('pane_id', PDO::FETCH_ASSOC);
+    if (!$skip_saved_data) {
+      $saved_panes = db_query('SELECT * FROM {commerce_checkout_pane}')->fetchAllAssoc('pane_id', PDO::FETCH_ASSOC);
+    }
 
     // Load panes defined by modules.
     $checkout_panes = array();
@@ -458,7 +482,7 @@ function commerce_checkout_panes($conditions = array()) {
         $checkout_pane['module'] = $module;
 
         // Update the pane with saved data.
-        if (!empty($saved_panes[$pane_id])) {
+        if (!$skip_saved_data && !empty($saved_panes[$pane_id])) {
           $checkout_pane = array_merge($checkout_pane, $saved_panes[$pane_id]);
           $checkout_pane['saved'] = TRUE;
         }
@@ -476,6 +500,7 @@ function commerce_checkout_panes($conditions = array()) {
         'base' => $pane_id,
         'name' => $checkout_pane['title'],
         'page' => 'checkout',
+        'locked' => FALSE,
         'fieldset' => TRUE,
         'collapsible' => FALSE,
         'collapsed' => FALSE,
@@ -573,7 +598,7 @@ function commerce_checkout_pane_load($pane_id) {
  *   The checkout pane object represented on the settings form.
  */
 function commerce_checkout_pane_settings_title($checkout_pane) {
-  return t("'@pane' checkout pane", array('@pane' => $checkout_pane['name']));
+  return t("'!pane' checkout pane", array('!pane' => $checkout_pane['name']));
 }
 
 /**
@@ -863,6 +888,11 @@ function commerce_checkout_create_account($name, $mail, $pass, $status, $notify 
  * Returns the default checkout completion message.
  */
 function commerce_checkout_completion_message_default() {
-  return t('Your order is number [commerce-order:order-number]. You can <a href="[commerce-order:url]">view your order</a> on your account page when logged in.')
-    . "\n\n" . t('<a href="[site:url]">Return to the front page.</a>');
+  if (filter_format_load('filtered_html')) {
+    return t('Your order is number [commerce-order:order-number]. You can <a href="[commerce-order:url]">view your order</a> on your account page when logged in.')
+      . "\n\n" . t('<a href="[site:url]">Return to the front page.</a>');
+  }
+  else {
+    return t('Your order is number [commerce-order:order-number]. You can view your order on your account page when logged in.');
+  }
 }

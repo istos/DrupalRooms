@@ -40,7 +40,9 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
 
       // Store the ids of the entities in the lockedEntities array for later
       // tracking, flipped for easier management via unset() below.
-      $this->lockedEntities += array_flip($ids);
+      if (is_array($ids)) {
+        $this->lockedEntities += array_flip($ids);
+      }
     }
 
     return $query;
@@ -229,8 +231,6 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
         ->execute();
       }
 
-      $this->invoke($op, $entity);
-
       // Update the static cache so that the next entity_load() will return this
       // newly saved entity.
       $this->entityCache[$entity->{$this->idKey}] = $entity;
@@ -238,6 +238,8 @@ class DrupalCommerceEntityController extends DrupalDefaultEntityController imple
       // Maintain the list of locked entities and release the lock if possible.
       unset($this->lockedEntities[$entity->{$this->idKey}]);
       $this->releaseLock();
+
+      $this->invoke($op, $entity);
 
       // Ignore slave server temporarily.
       db_ignore_slave();

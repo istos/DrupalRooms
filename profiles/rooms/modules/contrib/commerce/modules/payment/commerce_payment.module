@@ -238,6 +238,7 @@ function template_preprocess_commerce_payment_totals(&$variables) {
  * Implements hook_modules_enabled().
  */
 function commerce_payment_modules_enabled($modules) {
+  commerce_payment_methods_reset();
   _commerce_payment_default_rules_reset($modules);
 }
 
@@ -293,7 +294,6 @@ function commerce_payment_commerce_checkout_pane_info() {
   $checkout_panes['commerce_payment'] = array(
     'title' => t('Payment'),
     'page' => 'review',
-    'locked' => TRUE,
     'file' => 'includes/commerce_payment.checkout_pane.inc',
     'base' => 'commerce_payment_pane',
     'weight' => 10,
@@ -318,8 +318,11 @@ function commerce_payment_commerce_checkout_pane_info() {
  *
  * @param $order
  *   An order object.
+ * @param $log
+ *   Optional log message to use when updating the order status in conjunction
+ *   with the redirect to the next checkout page.
  */
-function commerce_payment_redirect_pane_next_page($order) {
+function commerce_payment_redirect_pane_next_page($order, $log = '') {
   // Load the order status object for the current order.
   $order_status = commerce_order_status_load($order->status);
 
@@ -327,7 +330,7 @@ function commerce_payment_redirect_pane_next_page($order) {
     $payment_page = commerce_checkout_page_load($order_status['checkout_page']);
     $next_page = $payment_page['next_page'];
 
-    $order = commerce_order_status_update($order, 'checkout_' . $next_page);
+    $order = commerce_order_status_update($order, 'checkout_' . $next_page, FALSE, NULL, $log);
 
     // Inform modules of checkout completion if the next page is Completed.
     if ($next_page == 'complete') {
@@ -344,8 +347,11 @@ function commerce_payment_redirect_pane_next_page($order) {
  *
  * @param $order
  *   An order object.
+ * @param $log
+ *   Optional log message to use when updating the order status in conjunction
+ *   with the redirect to the previous checkout page.
  */
-function commerce_payment_redirect_pane_previous_page($order) {
+function commerce_payment_redirect_pane_previous_page($order, $log = '') {
   // Load the order status object for the current order.
   $order_status = commerce_order_status_load($order->status);
 
@@ -353,7 +359,7 @@ function commerce_payment_redirect_pane_previous_page($order) {
     $payment_page = commerce_checkout_page_load($order_status['checkout_page']);
     $prev_page = $payment_page['prev_page'];
 
-    $order = commerce_order_status_update($order, 'checkout_' . $prev_page);
+    $order = commerce_order_status_update($order, 'checkout_' . $prev_page, FALSE, NULL, $log);
   }
 }
 
@@ -394,6 +400,7 @@ function commerce_payment_commerce_payment_totals_row_info($totals, $order) {
 
     // Add a row for the remaining balance on the order.
     if ($order) {
+      // @todo Fix for when there's a FALSE $balance.
       $balance = commerce_payment_order_balance($order, $totals);
 
       $rows[] = array(
@@ -544,6 +551,15 @@ function commerce_payment_methods() {
   }
 
   return $payment_methods;
+}
+
+/**
+ * Resets the cached list of payment methods.
+ */
+function commerce_payment_methods_reset() {
+  $payment_methods = &drupal_static('commerce_payment_methods');
+  $payment_methods = NULL;
+  entity_info_cache_clear();
 }
 
 /**
@@ -860,24 +876,6 @@ function commerce_payment_transaction_delete($transaction_id) {
  */
 function commerce_payment_transaction_delete_multiple($transaction_ids) {
   return entity_get_controller('commerce_payment_transaction')->delete($transaction_ids);
-}
-
-/**
- * Generate an array for rendering the given payment transaction.
- *
- * @param $transaction
- *   A fully loaded transaction object.
- * @param $view_mode
- *   The view mode for displaying the order, 'administrator' being the only one
- *     available by default.
- *
- * @return
- *   An array as expected by drupal_render().
- *
- * @deprecated since 7.x-1.0-rc1
- */
-function commerce_payment_transaction_build_content($order, $transaction, $view_mode = 'administrator') {
-  return entity_get_controller('commerce_payment_transaction')->view(array($transaction->transaction_id => $transaction), $view_mode);
 }
 
 /**

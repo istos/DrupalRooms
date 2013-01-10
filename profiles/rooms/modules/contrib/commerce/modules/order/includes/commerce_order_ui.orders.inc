@@ -16,6 +16,12 @@ function commerce_order_settings_form($form, &$form_state) {
     '#description' => t('Supply an optional help message to be displayed above the order add form.'),
     '#default_value' => variable_get('commerce_order_help_text', ''),
   );
+  $form['commerce_order_auto_revision'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Create new revisions when orders are updated by default.'),
+    '#description' => t('This default may be overridden on the order edit form but will always be respected for other order status updates.'),
+    '#default_value' => variable_get('commerce_order_auto_revision', TRUE),
+  );
 
   return system_settings_form($form);
 }
@@ -31,9 +37,6 @@ function commerce_order_settings_form($form, &$form_state) {
  * @see commerce_order_order_form()
  */
 function commerce_order_ui_order_form_wrapper($order, $account = NULL) {
-  // Add the breadcrumb for the form's location.
-  commerce_order_ui_set_breadcrumb();
-
   // Set the page title and a default customer if necessary.
   if (empty($order->order_id)) {
     drupal_set_title(t('Create an order'));
@@ -45,7 +48,6 @@ function commerce_order_ui_order_form_wrapper($order, $account = NULL) {
 
   // Include the forms file from the Order module.
   module_load_include('inc', 'commerce_order', 'includes/commerce_order.forms');
-
   return drupal_get_form('commerce_order_ui_order_form', $order);
 }
 
@@ -58,11 +60,7 @@ function commerce_order_ui_order_form_wrapper($order, $account = NULL) {
  * @see commerce_order_order_delete_form()
  */
 function commerce_order_ui_order_delete_form_wrapper($order) {
-  // Add the breadcrumb for the form's location.
-  commerce_order_ui_set_breadcrumb();
-
   // Include the forms file from the Order module.
   module_load_include('inc', 'commerce_order', 'includes/commerce_order.forms');
-
   return drupal_get_form('commerce_order_ui_order_delete_form', $order);
 }
