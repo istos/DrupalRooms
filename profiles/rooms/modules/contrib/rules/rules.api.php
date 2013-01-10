@@ -68,8 +68,8 @@
  *     action. All types declared in hook_rules_data_info() may be specified, as
  *     well as an array of possible types. Also lists and lists of a given type
  *     can be specified by using the notating list<integer> as introduced by
- *     the entity metadata module. The special keyword '*' can be used when all
- *     types should be allowed. Required.
+ *     the entity metadata module, see hook_entity_property_info(). The special
+ *     keyword '*' can be used when all types should be allowed. Required.
  *   - bundles: (optional) An array of bundle names. When the specified type is
  *     set to a single entity type, this may be used to restrict the allowed
  *     bundles.
@@ -92,10 +92,22 @@
  *     FALSE.
  *   - restriction: (optional) Restrict how the argument for this parameter may
  *     be provided. Supported values are 'selector' and 'input'.
+ *   - default mode: (optional) Customize the default mode for providing the
+ *     argument value for a parameter. Supported values are 'selector' and
+ *     'input'. The default depends on the required data type.
  *   - sanitize: (optional) Allows parameters of type 'text' to demand an
  *     already sanitized argument. If enabled, any user specified value won't be
  *     sanitized itself, but replacements applied by input evaluators are as
  *     well as values retrieved from selected data sources.
+ *   - translatable: (optional) If set to TRUE, the provided argument value
+ *     of the parameter is translatable via i18n String translation. This is
+ *     applicable for textual parameters only, i.e. parameters of type 'text',
+ *     'token', 'list<text>' and 'list<token>'. Defaults to FALSE.
+ *   - ui class: (optional) Allows overriding the UI class, which is used to
+ *     generate the configuration UI of a parameter. Defaults to the UI class of
+ *     the specified data type.
+ *   - cleaning callback: (optional) A callback that input evaluators may use
+ *     to clean inserted replacements; e.g. this is used by the token evaluator.
  *   - wrapped: (optional) Set this to TRUE in case the data should be passed
  *     wrapped. This only applies to wrapped data types, e.g. entities.
  *  Each 'provides' array may contain the following properties:
@@ -242,15 +254,23 @@ function hook_rules_condition_info() {
  *     described by a sub-array with the possible attributes:
  *     - label: The label of the variable. Start capitalized. Required.
  *     - type: The rules data type of the variable. All types declared in
- *       hook_rules_data_info() may be specified. Types may be parametrized e.g.
- *       the types node<page> or list<integer> are valid.
- *     - 'skip save': If the variable is saved after the event has occured
+ *       hook_rules_data_info() or supported by hook_entity_property_info() may
+ *       be specified.
+ *     - bundle: (optional) If the type is an entity type, the bundle of the
+ *       entity.
+ *     - description: (optional) A description for the variable.
+ *     - 'options list': (optional) A callback that returns an array of possible
+ *       values for this variable as specified for entity properties at
+ *       hook_entity_property_info().
+ *     - 'skip save': If the variable is saved after the event has occurred
  *       anyway, set this to TRUE. So rules won't save the variable a second
  *       time. Optional, defaults to FALSE.
  *     - handler: A handler to load the actual variable value. This is useful
  *       for lazy loading variables. The handler gets all so far available
  *       variables passed in the order as defined. Optional. Also see
- *       http://drupal.org/node/298554.
+ *       http://drupal.org/node/884554.
+ *       Note that for lazy-loading entities just the entity id may be passed
+ *       as variable value, so a handler is not necessary in that case.
  *
  *  @see rules_invoke_event()
  */
@@ -275,7 +295,7 @@ function hook_rules_event_info() {
       'label' => t('Content is going to be viewed'),
       'group' => t('Node'),
       'variables' => rules_events_node_variables(t('viewed content')) + array(
-        'build_mode' => array('type' => 'string', 'label' => t('view mode')),
+        'view_mode' => array('type' => 'text', 'label' => t('view mode')),
       ),
     ),
     'node_delete' => array(
@@ -746,6 +766,7 @@ function hook_rules_config_execute($config) {
  *   An array of rules configurations with the configuration names as keys.
  *
  * @see hook_default_rules_configuration_alter()
+ * @see hook_rules_config_defaults_rebuild()
  */
 function hook_default_rules_configuration() {
   $rule = rules_reaction_rule();
@@ -757,7 +778,7 @@ function hook_default_rules_configuration() {
        ->action('drupal_message', array('message' => 'A node has been updated.'));
 
   $configs['rules_test_default_1'] = $rule;
-  return $config;
+  return $configs;
 }
 
 /**
@@ -776,6 +797,37 @@ function hook_default_rules_configuration() {
 function hook_default_rules_configuration_alter(&$configs) {
   // Add custom condition.
   $configs['foo']->condition('bar');
+}
+
+/**
+ * Act after rebuilding default configurations.
+ *
+ * This hook is invoked by the entity module after default rules configurations
+ * have been rebuilt; i.e. defaults have been saved to the database.
+ *
+ * @param $rules_configs
+ *   The array of default rules configurations which have been inserted or
+ *   updated, keyed by name.
+ * @param $originals
+ *   An array of original rules configurations keyed by name; i.e. the rules
+ *   configurations before the current defaults have been applied. For inserted
+ *   rules configurations no original is available.
+ *
+ * @see hook_default_rules_configuration()
+ * @see entity_defaults_rebuild()
+ */
+function hook_rules_config_defaults_rebuild($rules_configs, $originals) {
+  // Once all defaults have been rebuilt, update all i18n strings at once. That
+  // way we build the rules cache once the rebuild is complete and avoid
+  // rebuilding caches for each updated rule.
+  foreach ($rules_configs as $name => $rule_config) {
+    if (empty($originals[$name])) {
+      rules_i18n_rules_config_insert($rule_config);
+    }
+    else {
+      rules_i18n_rules_config_update($rule_config, $originals[$name]);
+    }
+  }
 }
 
 /**
@@ -886,6 +938,32 @@ function hook_rules_action_base_upgrade($element, RulesPlugin $target) {
  */
 function hook_rules_element_upgrade_alter($element, $target) {
 
+}
+
+/**
+ * Allows modules to alter or to extend the provided Rules UI.
+ *
+ * Use this hook over the regular hook_menu_alter() as the Rules UI is re-used
+ * and embedded by modules. See rules_ui().
+ *
+ * @param $items
+ *   The menu items to alter.
+ * @param $base_path
+ *   The base path of the Rules UI.
+ * @param $base_count
+ *   The count of the directories contained in the base path.
+ */
+function hook_rules_ui_menu_alter(&$items, $base_path, $base_count) {
+  $items[$base_path . '/manage/%rules_config/schedule'] = array(
+    'title callback' => 'rules_get_title',
+    'title arguments' => array('Schedule !plugin "!label"', $base_count + 1),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('rules_scheduler_schedule_form', $base_count + 1, $base_path),
+    'access callback' => 'rules_config_access',
+    'access arguments' => array('update', $base_count + 1),
+    'file' => 'rules_scheduler.admin.inc',
+    'file path' => drupal_get_path('module', 'rules_scheduler'),
+  );
 }
 
 /**

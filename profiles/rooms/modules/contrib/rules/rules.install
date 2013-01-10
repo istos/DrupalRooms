@@ -35,7 +35,7 @@ function rules_schema() {
       ),
       'name' => array(
         'type' => 'varchar',
-        'length' => '255',
+        'length' => '64',
         'not null' => TRUE,
         'description' => 'The name of the configuration.',
       ),
@@ -74,11 +74,25 @@ function rules_schema() {
         'size' => 'tiny',
         'description' => 'The exportable status of the entity.',
       ),
+      'dirty' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'Dirty configurations fail the integrity check, e.g. due to missing dependencies.',
+      ),
       'module' => array(
         'description' => 'The name of the providing module if the entity has been defined in code.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => FALSE,
+      ),
+      'access_exposed' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'Whether to use a permission to control access for using components.',
       ),
       'data' => array(
         'type' => 'blob',
@@ -91,6 +105,9 @@ function rules_schema() {
     'primary key' => array('id'),
     'unique keys' => array(
       'name' => array('name'),
+    ),
+    'indexes' => array(
+      'plugin' => array('plugin'),
     ),
   );
   $schema['rules_trigger'] = array(
@@ -110,6 +127,49 @@ function rules_schema() {
       ),
     ),
     'primary key' => array('id', 'event'),
+    'foreign keys' => array(
+      'id' => array('rules_config' => 'id'),
+    ),
+  );
+  $schema['rules_tags'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The primary identifier of the configuration.',
+      ),
+      'tag' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'description' => 'The tag string associated with this configuration',
+      ),
+    ),
+    'primary key' => array('id', 'tag'),
+    'foreign keys' => array(
+      'id' => array('rules_config' => 'id'),
+    ),
+  );
+  $schema['rules_dependencies'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'The primary identifier of the configuration.',
+      ),
+      'module' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'description' => 'The name of the module that is required for the configuration.',
+      ),
+    ),
+    'primary key' => array('id', 'module'),
+    'indexes' => array(
+      'module' => array('module'),
+    ),
     'foreign keys' => array(
       'id' => array('rules_config' => 'id'),
     ),
@@ -244,4 +304,133 @@ function rules_update_7201() {
     ));
     // The module column did already exist before.
   }
+}
+
+/**
+ * Add an index for the rules configuration plugin column.
+ */
+function rules_update_7202() {
+  db_add_index('rules_config', 'plugin', array('plugin'));
+}
+
+/**
+ * Fix the length of the rules_config.name column.
+ */
+function rules_update_7203() {
+  db_drop_unique_key('rules_config', 'name');
+  $keys = array(
+    'unique keys' => array(
+      'name' => array('name'),
+    ),
+  );
+  db_change_field('rules_config', 'name', 'name', array(
+    'type' => 'varchar',
+    'length' => '64',
+    'not null' => TRUE,
+    'description' => 'The name of the configuration.',
+  ), $keys);
+}
+
+/**
+ * Add a table for rules-config tags.
+ */
+function rules_update_7204() {
+  if (!db_table_exists('rules_tags')) {
+    $schema['rules_tags'] = array(
+      'fields' => array(
+        'id' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'description' => 'The primary identifier of the configuration.',
+        ),
+        'tag' => array(
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => TRUE,
+          'description' => 'The tag string associated with this configuration',
+        ),
+      ),
+      'primary key' => array('id', 'tag'),
+      'foreign keys' => array(
+        'id' => array('rules_config' => 'id'),
+      ),
+    );
+    db_create_table('rules_tags', $schema['rules_tags']);
+  }
+}
+
+/**
+ * Add the rules_dependencies table and the rules_config.dirty column.
+ */
+function rules_update_7205() {
+  if (!db_table_exists('rules_dependencies')) {
+    $schema['rules_dependencies'] = array(
+      'fields' => array(
+        'id' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+          'description' => 'The primary identifier of the configuration.',
+        ),
+        'module' => array(
+          'type' => 'varchar',
+          'length' => '255',
+          'not null' => TRUE,
+          'description' => 'The name of the module that is required for the configuration.',
+        ),
+      ),
+      'primary key' => array('id', 'module'),
+      'indexes' => array(
+        'module' => array('module'),
+      ),
+      'foreign keys' => array(
+        'id' => array('rules_config' => 'id'),
+      ),
+    );
+    db_create_table('rules_dependencies', $schema['rules_dependencies']);
+  }
+  if (!db_field_exists('rules_config', 'dirty')) {
+    db_add_field('rules_config', 'dirty', array(
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+      'size' => 'tiny',
+    ));
+  }
+}
+
+/**
+ * Flush all caches.
+ */
+function rules_update_7206() {
+  // The update system is going to flush all caches anyway, so nothing to do.
+}
+
+/**
+ * Flush all caches.
+ */
+function rules_update_7207() {
+  // The update system is going to flush all caches anyway, so nothing to do.
+}
+
+/**
+ * Flush all caches to update the data_is_empty condition info.
+ */
+function rules_update_7208() {
+  // The update system is going to flush all caches anyway, so nothing to do.
+}
+
+/**
+ * Creates a flag that enables a permission for using components.
+ */
+function rules_update_7209() {
+  // Create a access exposed flag column.
+  db_add_field('rules_config', 'access_exposed', array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+    'size' => 'tiny',
+    'description' => 'Whether to use a permission to control access for using components.',
+  ));
 }

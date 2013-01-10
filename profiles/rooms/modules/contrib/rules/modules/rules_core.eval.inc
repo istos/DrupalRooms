@@ -23,13 +23,14 @@ function rules_element_invoke_component($arguments, RulesPlugin $element) {
     $replacements = array('%label' => $component->label(), '@plugin' => $component->plugin());
     // Handle recursion prevention.
     if ($state->isBlocked($component)) {
-      return rules_log('Not evaluating @plugin %label to prevent recursion.', $replacements, RulesLog::INFO);
+      return rules_log('Not evaluating @plugin %label to prevent recursion.', $replacements, RulesLog::INFO, $component);
     }
     $state->block($component);
-    rules_log('Evaluating @plugin %label.', $replacements, RulesLog::INFO, TRUE);
+    rules_log('Evaluating @plugin %label.', $replacements, RulesLog::INFO, $component, TRUE);
     module_invoke_all('rules_config_execute', $component);
 
     // Manually create a new evaluation state and evaluate the component.
+    $args = array_intersect_key($wrapped_args, $component->parameterInfo());
     $new_state = $component->setUpState($wrapped_args);
     $return = $component->evaluate($new_state);
 
@@ -47,11 +48,11 @@ function rules_element_invoke_component($arguments, RulesPlugin $element) {
 
     // Cleanup the state, what saves not mergable variables now.
     $new_state->cleanup();
-    rules_log('Finished evaluation of @plugin %label.', $replacements, RulesLog::INFO, FALSE);
+    rules_log('Finished evaluation of @plugin %label.', $replacements, RulesLog::INFO, $component, FALSE);
     return $return;
   }
   else {
-    throw new RulesException('Unable to get the component %name', array('%name' => $info['#config_name']), $element);
+    throw new RulesEvaluationException('Unable to get the component %name', array('%name' => $info['#config_name']), $element, RulesLog::ERROR);
   }
 }
 
@@ -116,7 +117,7 @@ class RulesURIInputEvaluator extends RulesDataInputEvaluator {
     elseif (valid_url($uri)) {
       return $uri;
     }
-    throw new RulesException('Input evaluation generated an invalid URI.', array(), NULL, RulesLog::WARN);
+    throw new RulesEvaluationException('Input evaluation generated an invalid URI.', array(), NULL, RulesLog::WARN);
   }
 }
 
@@ -146,7 +147,36 @@ class RulesDateOffsetProcessor extends RulesDataProcessor {
 
   public function process($value, $info, RulesState $state, RulesPlugin $element) {
     $value = isset($this->processor) ? $this->processor->process($value, $info, $state, $element) : $value;
-    return $value + $this->setting['value'];
+    return RulesDateOffsetProcessor::applyOffset($value, $this->setting['value']);
+  }
+
+  /**
+   * Intelligently applies the given date offset in seconds.
+   *
+   * Intelligently apply duration values > 1 day, i.e. convert the duration
+   * to its biggest possible unit (months, days) and apply it to the date with
+   * the given unit. That's necessary as the number of days in a month
+   * differs, as well as the number of hours for a day (on DST changes).
+   */
+  public static function applyOffset($timestamp, $offset) {
+    if (abs($offset) >= 86400) {
+
+      // Get the days out of the seconds.
+      $days = intval($offset / 86400);
+      $sec = $offset % 86400;
+      // Get the months out of the number of days.
+      $months = intval($days / 30);
+      $days = $days % 30;
+
+      // Apply the offset using the DateTime::modify and convert it back to a
+      // timestamp.
+      $date = date_create("@$timestamp");
+      $date->modify("$months months $days days $sec seconds");
+      return $date->format('U');
+    }
+    else {
+      return $timestamp + $offset;
+    }
   }
 }
 

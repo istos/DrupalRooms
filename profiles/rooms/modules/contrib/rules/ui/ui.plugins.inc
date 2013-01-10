@@ -59,12 +59,13 @@ class RulesRuleUI extends RulesActionContainerUI {
    * Applies the values of the form to the rule configuration.
    */
   function form_extract_values($form, &$form_state) {
+    $form_values = RulesPluginUI::getFormStateValues($form, $form_state);
     // Run condition and action container value extraction.
     if (isset($form['conditions'])) {
       $this->conditions->extender('RulesConditionContainerUI')->form_extract_values($form['conditions'], $form_state);
     }
-    if (!empty($form_state['values']['label'])) {
-      $this->element->label = $form_state['values']['label'];
+    if (!empty($form_values['label'])) {
+      $this->element->label = $form_values['label'];
     }
     parent::form_extract_values($form, $form_state);
   }
@@ -99,6 +100,7 @@ class RulesReactionRuleUI extends RulesRuleUI {
     );
     $form['events']['table']['#attributes']['class'][] = 'rules-elements-table';
     foreach ($this->rule->events() as $event_name) {
+      $event_info += array($event_name => array('label' => t('Unknown event "!event_name"', array('!event_name' => $event_name))));
       $form['events']['table']['#rows'][$event_name] = array(
         check_plain($event_info[$event_name]['label']),
         '<span class="rules_rule_event">' . l(t('delete'), RulesPluginUI::path($this->rule->name, 'delete/event/' . $event_name)) . '</span>',
@@ -143,9 +145,10 @@ class RulesReactionRuleUI extends RulesRuleUI {
   }
 
   public function settingsFormExtractValues($form, &$form_state) {
+    $form_values = RulesPluginUI::getFormStateValues($form['settings'], $form_state);
     parent::settingsFormExtractValues($form, $form_state);
-    $this->rule->active = $form_state['values']['active'];
-    $this->rule->weight = $form_state['values']['weight'];
+    $this->rule->active = $form_values['active'];
+    $this->rule->weight = $form_values['weight'];
   }
 }
 
@@ -177,7 +180,7 @@ class RulesLoopUI extends RulesActionContainerUI {
     $form['item'] = array(
       '#type' => 'fieldset',
       '#title' => t('Current list item'),
-      '#description' => t('A variable which holds the current list item.'),
+      '#description' => t('The variable used for holding each list item in the loop. This variable will be available inside the loop only.'),
       '#tree' => TRUE,
     );
     $form['item']['label'] = array(
@@ -198,9 +201,10 @@ class RulesLoopUI extends RulesActionContainerUI {
 
   function form_extract_values($form, &$form_state) {
     parent::form_extract_values($form, $form_state);
+    $form_values = RulesPluginUI::getFormStateValues($form, $form_state);
 
-    $this->element->settings['item:var'] = $form_state['values']['item']['var'];
-    $this->element->settings['item:label'] = $form_state['values']['item']['label'];
+    $this->element->settings['item:var'] = $form_values['item']['var'];
+    $this->element->settings['item:label'] = $form_values['item']['label'];
   }
 
   public function form_validate($form, &$form_state) {

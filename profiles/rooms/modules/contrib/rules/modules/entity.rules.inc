@@ -174,27 +174,6 @@ function rules_action_entity_createfetch_access(RulesAbstractPlugin $element) {
 }
 
 /**
- * Custom validate callback for data fetch action.
- */
-function rules_action_entity_fetch_validate($element) {
-  if (!isset($element->settings['type'])) {
-    throw new RulesException('Invalid type specified.', array(), array($element, 'parameter', 'type'));
-  }
-}
-
-/**
- * Custom validate callback for data query action.
- */
-function rules_action_entity_query_validate($element) {
-  if (!isset($element->settings['type'])) {
-    throw new RulesException('Invalid type specified.', array(), array($element, 'parameter', 'type'));
-  }
-  if (!isset($element->settings['property'])) {
-    throw new RulesException('Invalid property specified.', array(), array($element, 'parameter', 'property'));
-  }
-}
-
-/**
  * Custom access callback for the data query action.
  */
 function rules_action_entity_query_access(RulesAbstractPlugin $element) {
@@ -242,7 +221,7 @@ function rules_action_entity_query_property_options_list(RulesAbstractPlugin $el
 }
 
 /**
- * Returns the options list specified for the choosen property.
+ * Returns the options list specified for the chosen property.
  */
 function rules_action_entity_query_value_options_list(RulesAbstractPlugin $element) {
   // Get the possible values for the selected property.
@@ -273,13 +252,17 @@ function rules_entity_action_type_options($element, $name = NULL) {
 
 /**
  * Returns options containing entity types having the given key set in the info.
+ *
+ * Additionally, we exclude all entity types that are marked as configuration.
  */
 function rules_entity_type_options($key = NULL) {
   $info = entity_get_info();
   $types = array();
   foreach ($info as $type => $entity_info) {
-    if (!isset($key) || entity_type_supports($type, $key)) {
-      $types[$type] = $entity_info['label'];
+    if (empty($entity_info['configuration']) && empty($entity_info['exportable'])) {
+      if (!isset($key) || entity_type_supports($type, $key)) {
+        $types[$type] = $entity_info['label'];
+      }
     }
   }
   return $types;
@@ -410,20 +393,6 @@ function rules_condition_entity_has_field_assertions($element) {
 function rules_condition_entity_is_of_type_assertions($element) {
   if ($type = $element->settings['type']) {
     return array('entity' => array('type' => $type));
-  }
-}
-
-/**
- * Gets all view modes of an entity for an entity_view event.
- */
-function rules_get_entity_view_modes($type, $name) {
-  if ($type == 'event') {
-    $entity_type = substr($name, 0, -5);
-    $info = entity_get_info($entity_type);
-    foreach ($info['view modes'] as $mode => $mode_info) {
-      $modes[$mode] = $mode_info['label'];
-    }
-    return $modes;
   }
 }
 

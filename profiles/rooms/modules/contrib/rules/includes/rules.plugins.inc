@@ -16,34 +16,39 @@ class RulesAction extends RulesAbstractPlugin implements RulesActionInterface {
    * Execute the callback and update/save data as specified by the action.
    */
   protected function executeCallback(array $args, RulesState $state = NULL) {
-    rules_log('Evaluating the action %name.', array('%name' => $this->elementName));
+    rules_log('Evaluating the action %name.', array('%name' => $this->elementName), RulesLog::INFO, $this);
     $return = $this->__call('execute', empty($this->info['named parameter']) ? $args : array($args));
     // Get the (partially) wrapped arguments.
     $args = $state->currentArguments;
 
     if (is_array($return)) {
       foreach ($return as $name => $data) {
-        // Update the data value using the wrapper.
-        if (isset($args[$name]) && $args[$name] instanceof EntityMetadataWrapper) {
-          try {
-            $args[$name]->set($data);
-          }
-          catch (EntityMetadataWrapperException $e) {
-            throw new RulesException('Unable to update the argument for parameter %name: %error', array('%name' => $name, '%error' => $e->getMessage()), $this);
-          }
-        }
-        elseif (array_key_exists($name, $args)) {
-          // Map back to the source variable name and update it.
-          $var_name = !empty($this->settings[$name . ':select']) ? str_replace('-', '_', $this->settings[$name . ':select']) : $name;
-          $state->variables[$var_name] = $data;
-        }
         // Add provided variables.
-        elseif (!$state->varInfo($name) && isset($this->info['provides'][$name])) {
+        if (isset($this->info['provides'][$name])) {
           $var_name = isset($this->settings[$name . ':var']) ? $this->settings[$name . ':var'] : $name;
-          $state->addVariable($var_name, $data, $this->info['provides'][$name]);
-          rules_log('Added the provided variable %name of type %type', array('%name' => $var_name, '%type' => $this->info['provides'][$name]['type']));
-          if (!empty($this->info['provides'][$name]['save']) && $state->variables[$var_name] instanceof EntityMetadataWrapper) {
-            $state->saveChanges($var_name, $state->variables[$var_name]);
+          if (!$state->varInfo($var_name)) {
+            $state->addVariable($var_name, $data, $this->info['provides'][$name]);
+            rules_log('Added the provided variable %name of type %type', array('%name' => $var_name, '%type' => $this->info['provides'][$name]['type']), RulesLog::INFO, $this);
+            if (!empty($this->info['provides'][$name]['save']) && $state->variables[$var_name] instanceof EntityMetadataWrapper) {
+              $state->saveChanges($var_name, $state->variables[$var_name]);
+            }
+          }
+        }
+        // Support updating variables by returning the values.
+        elseif (!isset($this->info['provides'][$name])) {
+          // Update the data value using the wrapper.
+          if (isset($args[$name]) && $args[$name] instanceof EntityMetadataWrapper) {
+            try {
+              $args[$name]->set($data);
+            }
+            catch (EntityMetadataWrapperException $e) {
+              throw new RulesEvaluationException('Unable to update the argument for parameter %name: %error', array('%name' => $name, '%error' => $e->getMessage()), $this);
+            }
+          }
+          elseif (array_key_exists($name, $args)) {
+            // Map back to the source variable name and update it.
+            $var_name = !empty($this->settings[$name . ':select']) ? str_replace('-', '_', $this->settings[$name . ':select']) : $name;
+            $state->variables[$var_name] = $data;
           }
         }
       }
@@ -89,7 +94,7 @@ class RulesCondition extends RulesAbstractPlugin implements RulesConditionInterf
 
   protected function executeCallback(array $args, RulesState $state = NULL) {
     $return = (bool) $this->__call('execute', empty($this->info['named parameter']) ? $args : array($args));
-    rules_log('The condition %name evaluated to %bool', array('%name' => $this->elementName, '%bool' => $return ? 'TRUE' : 'FALSE'));
+    rules_log('The condition %name evaluated to %bool', array('%name' => $this->elementName, '%bool' => $return ? 'TRUE' : 'FALSE'), RulesLog::INFO, $this);
     return $this->negate ? !$return : $return;
   }
 
@@ -205,9 +210,11 @@ class Rule extends RulesActionContainer {
   }
 
   public function evaluate(RulesState $state) {
-    rules_log('Evaluating rule %label.', array('%label' => $this->label));
+    rules_log('Evaluating conditions of rule %label.', array('%label' => $this->label), RulesLog::INFO, $this);
     if ($this->conditions->evaluate($state)) {
+      rules_log('Rule %label fires.', array('%label' => $this->label), RulesLog::INFO, $this, TRUE);
       parent::evaluate($state);
+      rules_log('Rule %label has fired.', array('%label' => $this->label), RulesLog::INFO, $this, FALSE);
     }
   }
 
@@ -217,13 +224,14 @@ class Rule extends RulesActionContainer {
    * @see RulesPlugin::evaluate()
    */
   public function fire(RulesState $state) {
-    rules_log('Firing rule %label.', array('%label' => $this->label));
+    rules_log('Firing rule %label.', array('%label' => $this->label), RulesLog::INFO, $this);
     parent::evaluate($state);
   }
 
   public function integrityCheck() {
+    parent::integrityCheck();
     $this->conditions->integrityCheck();
-    return parent::integrityCheck();
+    return $this;
   }
 
   public function access() {
@@ -327,6 +335,11 @@ class Rule extends RulesActionContainer {
     }
     return $provides;
   }
+
+  public function resetInternalCache() {
+    parent::resetInternalCache();
+    $this->conditions->resetInternalCache();
+  }
 }
 
 /**
@@ -372,7 +385,7 @@ class RulesReactionRule extends Rule implements RulesTriggerableInterface {
   public function evaluate(RulesState $state) {
     // Implement recursion prevention for reaction rules.
     if ($state->isBlocked($this)) {
-      return rules_log('Not evaluating @plugin %label to prevent recursion.', array('%label' => $this->label(), '@plugin' => $this->plugin()), RulesLog::INFO);
+      return rules_log('Not evaluating @plugin %label to prevent recursion.', array('%label' => $this->label(), '@plugin' => $this->plugin()), RulesLog::INFO, $this);
     }
     $state->block($this);
     $copy = clone $state;
@@ -412,23 +425,29 @@ class RulesReactionRule extends Rule implements RulesTriggerableInterface {
   }
 
   public function availableVariables() {
-    if (isset($this->parent)) {
-      // Return the event variables provided by the event set, once cached.
-      return $this->parent->stateVariables();
-    }
-    //TODO: Once we have event_info caching make use of it.
-    $event_info = rules_fetch_data('event_info');
-    $events = array_intersect($this->events, array_keys($event_info));
-    foreach ($events as $event) {
-      $event_info[$event] += array('variables' => array());
-      if (!isset($vars)) {
-        $vars = $event_info[$event]['variables'];
+    if (!isset($this->availableVariables)) {
+      if (isset($this->parent)) {
+        // Return the event variables provided by the event set, once cached.
+        $this->availableVariables = $this->parent->stateVariables();
       }
       else {
-        $vars = array_intersect_key($vars, $event_info[$event]['variables']);
+        // The intersection of the variables provided by the events are
+        // available.
+        $event_info = rules_fetch_data('event_info');
+        $events = array_intersect($this->events, array_keys($event_info));
+        foreach ($events as $event) {
+          $event_info[$event] += array('variables' => array());
+          if (isset($this->availableVariables)) {
+            $this->availableVariables = array_intersect_key($this->availableVariables, $event_info[$event]['variables']);
+          }
+          else {
+            $this->availableVariables = $event_info[$event]['variables'];
+          }
+        }
+        $this->availableVariables = isset($this->availableVariables) ? RulesState::defaultVariables() + $this->availableVariables : RulesState::defaultVariables();
       }
     }
-    return parent::availableVariables() + (isset($vars) ? $vars : array());
+    return $this->availableVariables;
   }
 
   public function __sleep() {
@@ -534,7 +553,8 @@ class RulesLoop extends RulesActionContainer {
       'type' => 'list',
       'restriction' => 'selector',
       'label' => t('List'),
-      'description' => t('The list to loop over.'),
+      'description' => t('The list to loop over. The loop will step through each item in the list, allowing further actions on them. See <a href="@url"> the online handbook</a> for more information on how to use loops.',
+        array('@url' => rules_external_help('loops'))),
     );
     return $info;
   }
@@ -560,28 +580,34 @@ class RulesLoop extends RulesActionContainer {
   }
 
   public function evaluate(RulesState $state) {
-    $param_info = $this->pluginParameterInfo();
-    $list = $this->getArgument('list', $param_info['list'], $state);
-    $item_var_info = $this->listItemInfo();
-    $item_var_name = $this->settings['item:var'];
+    try {
+      $param_info = $this->pluginParameterInfo();
+      $list = $this->getArgument('list', $param_info['list'], $state);
+      $item_var_info = $this->listItemInfo();
+      $item_var_name = $this->settings['item:var'];
 
-    if (isset($this->settings['list:select'])) {
-      rules_log('Looping over the list items of %selector', array('%selector' => $this->settings['list:select']));
-    }
+      if (isset($this->settings['list:select'])) {
+        rules_log('Looping over the list items of %selector', array('%selector' => $this->settings['list:select']), RulesLog::INFO, $this);
+      }
 
-    // Loop over the list and evaluate the children for each list item.
-    foreach ($list as $key => $item) {
-      // Use a separate state so variables are available in the loop only.
-      $state2 = clone $state;
-      $state2->addVariable($item_var_name, $list[$key], $item_var_info);
-      parent::evaluate($state2);
+      // Loop over the list and evaluate the children for each list item.
+      foreach ($list as $key => $item) {
+        // Use a separate state so variables are available in the loop only.
+        $state2 = clone $state;
+        $state2->addVariable($item_var_name, $list[$key], $item_var_info);
+        parent::evaluate($state2);
 
-      // Update variables from parent scope.
-      foreach ($state->variables as $var_key => &$var_value) {
-        if (array_key_exists($var_key, $state2->variables)) {
-          $var_value = $state2->variables[$var_key];
+        // Update variables from parent scope.
+        foreach ($state->variables as $var_key => &$var_value) {
+          if (array_key_exists($var_key, $state2->variables)) {
+            $var_value = $state2->variables[$var_key];
+          }
         }
       }
+    }
+    catch (RulesEvaluationException $e) {
+      rules_log($e->msg, $e->args, $e->severity);
+      rules_log('Unable to evaluate %name.', array('%name' => $this->getPluginName()), RulesLog::WARN, $this);
     }
   }
 
@@ -663,49 +689,78 @@ class RulesEventSet extends RulesRuleSet {
   }
 
   public function executeByArgs($args = array()) {
-    rules_log('Reacting on event %label.', array('%label' => $this->info['label']), RulesLog::INFO, TRUE);
+    rules_log('Reacting on event %label.', array('%label' => $this->info['label']), RulesLog::INFO, NULL, TRUE);
     $state = $this->setUpState($args);
     module_invoke_all('rules_config_execute', $this);
     $this->evaluate($state);
     $state->cleanUp($this);
-    rules_log('Finished reacting on event %label.', array('%label' => $this->info['label']), RulesLog::INFO, FALSE);
+    rules_log('Finished reacting on event %label.', array('%label' => $this->info['label']), RulesLog::INFO, NULL, FALSE);
   }
 
-  public function rebuildCache(&$itemInfo, &$cache) {
-    parent::rebuildCache($itemInfo, $cache);
+  /**
+   * Cache event-sets per event to allow efficient usage via rules_invoke_event().
+   *
+   * @see rules_get_cache()
+   * @see rules_invoke_event()
+   */
+  public static function rebuildEventCache() {
     // Set up the per-event cache.
     $events = rules_fetch_data('event_info');
-    $empty = array();
+    $sets = array();
+    // Add all rules associated with this event to an EventSet for caching.
+    $rules = rules_config_load_multiple(FALSE, array('plugin' => 'reaction rule', 'active' => TRUE));
 
-    foreach ($events as $name => $info) {
-      $info += array(
-        'variables' => isset($info['arguments']) ? $info['arguments'] : array(),
-      );
-      // Add all rules associated with this event to an EventSet for caching.
-      if ($rules = rules_config_load_multiple(FALSE, array('event' => $name, 'active' => TRUE))) {
-        $event = new RulesEventSet($info);
-        $event->name = $name;
-        foreach ($rules as $rule) {
+    foreach ($rules as $name => $rule) {
+      foreach ($rule->events() as $event) {
+        // Skip not defined events.
+        if (empty($events[$event])) {
+          continue;
+        }
+        // Create an event set if not yet done.
+        if (!isset($sets[$event])) {
+          $event_info = $events[$event] + array(
+            'variables' => isset($events[$event]['arguments']) ? $events[$event]['arguments'] : array(),
+          );
+          $sets[$event] = new RulesEventSet($event_info);
+          $sets[$event]->name = $event;
+        }
+
+        // If a rule is marked as dirty, check if this still applies.
+        if ($rule->dirty) {
+          rules_config_update_dirty_flag($rule);
+        }
+        if (!$rule->dirty) {
           // Clone the rule to avoid modules getting the changed version from
           // the static cache.
-          $event->rule(clone $rule);
+          $sets[$event]->rule(clone $rule);
         }
-        $event->sortChildren();
-        $event->optimize();
-        // Allow modules to alter the cached event set.
-        drupal_alter('rules_event_set', $name, $event);
-        rules_set_cache('event_' . $name, $event);
       }
-      else {
-        $empty[] = $name;
-      }
+    }
+
+    // Create cache items for all created sets.
+    foreach ($sets as $event => $set) {
+      $set->sortChildren();
+      $set->optimize();
+      // Allow modules to alter the cached event set.
+      drupal_alter('rules_event_set', $event, $set);
+      rules_set_cache('event_' . $event, $set);
     }
     // Cache a list of empty sets so we can use it to speed up later calls.
     // See rules_get_event_set().
-    variable_set('rules_empty_sets', array_flip($empty));
+    $empty_events = array_keys(array_diff_key($events, $sets));
+    variable_set('rules_empty_sets', array_flip($empty_events));
   }
 
   protected function stateVariables($element = NULL) {
     return $this->availableVariables();
+  }
+
+  /**
+   * Do not save since this class is for caching purposes only.
+   *
+   * @see RulesPlugin::save()
+   */
+  public function save($name = NULL, $module = 'rules') {
+    return FALSE;
   }
 }

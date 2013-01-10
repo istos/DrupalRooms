@@ -18,7 +18,7 @@ function rules_action_data_set($wrapper, $value, $settings, $state, $element) {
       $wrapper->set($value);
     }
     catch (EntityMetadataWrapperException $e) {
-      throw new RulesException('Unable to modify data "@selector": ' . $e->getMessage(), array('@selector' => $settings['data:select']));
+      throw new RulesEvaluationException('Unable to modify data "@selector": ' . $e->getMessage(), array('@selector' => $settings['data:select']));
     }
     // Save changes if a property of a variable has been changed.
     if (strpos($element->settings['data:select'], ':') !== FALSE) {
@@ -51,6 +51,13 @@ function rules_action_data_set_info_alter(&$element_info, $element) {
  * Action: Calculate a value.
  */
 function rules_action_data_calc($input1, $op, $input2, $settings, $state, $element) {
+  $info = $element->pluginParameterInfo();
+  // Make sure to apply date offsets intelligently.
+  if ($info['input_1']['type'] == 'date' && $info['input_2']['type'] == 'duration') {
+    $input2 = ($op == '-') ? $input2 * -1 : $input2;
+    return array('result' => (int) RulesDateOffsetProcessor::applyOffset($input1, $input2));
+  }
+
   switch ($op) {
     case '+':
       $result = $input1 + $input2;
@@ -66,9 +73,9 @@ function rules_action_data_calc($input1, $op, $input2, $settings, $state, $eleme
       break;
   }
   if (isset($result)) {
-    // Ensure results are valid integer values if necesary.
+    // Ensure results are valid integer values if necessary.
     $var_info = rules_array_key($element->providesVariables());
-    if (in_array($var_info['type'], array('integer', 'date', 'duration'))) {
+    if ($var_info['type'] == 'integer') {
       $result = (int) $result;
     }
     return array('result' => $result);
@@ -169,6 +176,75 @@ function rules_action_variable_add_info_alter(&$element_info, RulesAbstractPlugi
 }
 
 /**
+ * Action: Convert a value.
+ */
+function rules_action_data_convert($arguments, RulesPlugin $element, $state) {
+
+  $value_info = $element->getArgumentInfo('value');
+  $from_type = $value_info['type'];
+  $target_type = $arguments['type'];
+
+  // First apply the rounding behavior if given.
+  if (isset($arguments['rounding_behavior'])) {
+    switch ($arguments['rounding_behavior']) {
+      case 'up':
+        $arguments['value'] = ceil($arguments['value']);
+        break;
+      case 'down':
+        $arguments['value'] = floor($arguments['value']);
+        break;
+      default:
+      case 'round':
+        $arguments['value'] = round($arguments['value']);
+        break;
+    }
+  }
+
+  switch ($target_type) {
+    case 'decimal':
+      $result = floatval($arguments['value']);
+      break;
+    case 'integer':
+      $result = intval($arguments['value']);
+      break;
+    case 'text':
+      $result = strval($arguments['value']);
+      break;
+  }
+
+  return array('conversion_result' => $result);
+}
+
+/**
+ * Info alteration callback for variable add action.
+ */
+function rules_action_data_convert_info_alter(&$element_info, RulesAbstractPlugin $element) {
+
+  if (isset($element->settings['type']) && $type = $element->settings['type']) {
+    $element_info['provides']['conversion_result']['type'] = $type;
+
+    if ($type != 'integer') {
+      // Only support the rounding behavior option for integers.
+      unset($element_info['parameter']['rounding_behavior']);
+    }
+
+    // Configure compatible source-types:
+    switch ($type) {
+      case 'integer':
+        $sources = array('decimal', 'text', 'token', 'uri', 'date', 'duration', 'boolean');
+        break;
+      case 'decimal':
+        $sources = array('integer', 'text', 'token', 'uri', 'date', 'duration', 'boolean');
+        break;
+      case 'text':
+        $sources = array('integer', 'decimal', 'token', 'uri', 'date', 'duration', 'boolean');
+        break;
+    }
+    $element_info['parameter']['value']['type'] = $sources;
+  }
+}
+
+/**
  * Action: Create data.
  */
 function rules_action_data_create($args, $element) {
@@ -188,11 +264,11 @@ function rules_action_data_create($args, $element) {
       return array('data_created' => $data);
     }
     catch (EntityMetadataWrapperException $e) {
-      throw new RulesException('Unable to create @data": ' . $e->getMessage(), array('@data' => $type), $element);
+      throw new RulesEvaluationException('Unable to create @data": ' . $e->getMessage(), array('@data' => $type), $element);
     }
   }
   else {
-    throw new RulesException('Unable to create @data, no creation callback found.', array('@data' => $type), $element);
+    throw new RulesEvaluationException('Unable to create @data, no creation callback found.', array('@data' => $type), $element, RulesLog::ERROR);
   }
 }
 
@@ -233,13 +309,21 @@ function rules_condition_data_is($data, $op, $value) {
   switch ($op) {
     default:
     case '==':
-      return $data == $value || is_array($value) && in_array($data, $value);
+      // In case both values evaluate to FALSE, further differentiate between
+      // NULL values and values evaluating to FALSE.
+      if (!$data && !$value) {
+        return (isset($data) && isset($value)) || (!isset($data) && !isset($value));
+      }
+      return $data == $value;
     case '<':
       return $data < $value;
     case '>':
       return $data > $value;
+      // Note: This is deprecated by the text comparison condition and IN below.
     case 'contains':
       return is_string($data) && strpos($data, $value) !== FALSE || is_array($data) && in_array($value, $data);
+    case 'IN':
+      return is_array($value) && in_array($data, $value);
   }
 }
 
@@ -250,10 +334,10 @@ function rules_condition_data_is($data, $op, $value) {
  * evaluated elements can make use of this information.
  */
 function rules_condition_data_is_info_alter(&$element_info, RulesAbstractPlugin $element) {
-  $element->settings += array('data:select' => NULL);
+  $element->settings += array('data:select' => NULL, 'op' => '==');
   if ($wrapper = $element->applyDataSelector($element->settings['data:select'])) {
     $info = $wrapper->info();
-    $element_info['parameter']['value']['type'] = $wrapper->type();
+    $element_info['parameter']['value']['type'] = $element->settings['op'] == 'IN' ? 'list<' . $wrapper->type() . '>' : $wrapper->type();
     $element_info['parameter']['value']['options list']  = !empty($info['options list']) ? 'rules_data_selector_options_list' : FALSE;
   }
 }
@@ -279,6 +363,35 @@ function rules_condition_data_list_contains($list, $item, $settings, $state) {
  * Condition: Data value is empty.
  */
 function rules_condition_data_is_empty($data) {
+  // Note that some primitive variables might not be wrapped at all.
+  if ($data instanceof EntityMetadataWrapper) {
+    try {
+      // We cannot use the dataAvailable() method from the wrapper because it
+      // is protected, so we catch possible exceptions with the value() method.
+      $value = $data->value();
+      return empty($value);
+    }
+    catch (EntityMetadataWrapperException $e) {
+      // An exception means that the wrapper is somehow broken and we treat
+      // that as empty.
+      return TRUE;
+    }
+  }
   return empty($data);
 }
 
+/**
+ * Condition: Textual comparison.
+ */
+function rules_data_text_comparison($text, $text2, $op = 'contains') {
+  switch ($op) {
+    case 'contains':
+      return strpos($text, $text2) !== FALSE;
+    case 'starts':
+      return strpos($text, $text2) === 0;
+    case 'ends':
+     return strrpos($text, $text2) === (strlen($text) - strlen($text2));
+    case 'regex':
+     return (bool) preg_match('/'. str_replace('/', '\\/', $text2) .'/', $text);
+  }
+}

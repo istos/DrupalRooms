@@ -22,7 +22,7 @@ function rules_action_entity_fetch($type, $id, $revision) {
   $return = entity_load($type, array($id), isset($conditions) ? $conditions : array());
   $entity = reset($return);
   if (!$entity) {
-    throw new RulesException('Unable to load @entity with id "@id"', array('@id' => $id, '@entity' => $type));
+    throw new RulesEvaluationException('Unable to load @entity with id "@id"', array('@id' => $id, '@entity' => $type));
   }
   return array('entity_fetched' => $entity);
 }
@@ -91,7 +91,7 @@ function rules_action_entity_create($args, $element) {
     return array('entity_created' => $data);
   }
   catch (EntityMetadataWrapperException $e) {
-    throw new RulesException('Unable to create entity @type": ' . $e->getMessage(), array('@type' => $args['type']), $element);
+    throw new RulesEvaluationException('Unable to create entity @type": ' . $e->getMessage(), array('@type' => $args['type']), $element);
   }
 }
 
@@ -99,7 +99,7 @@ function rules_action_entity_create($args, $element) {
  * Info alteration callback for the entity create action.
  */
 function rules_action_entity_create_info_alter(&$element_info, RulesAbstractPlugin $element) {
-  if (!empty($element->settings['type'])) {
+  if (!empty($element->settings['type']) && entity_get_info($element->settings['type'])) {
     $wrapper = entity_metadata_wrapper($element->settings['type']);
     // Add the data type's needed parameter for loading to the parameter info.
     foreach ($wrapper as $name => $child) {
@@ -133,7 +133,7 @@ function rules_action_entity_delete($wrapper, $settings, $state, $element) {
     $wrapper->delete();
   }
   catch (EntityMetadataWrapperException $e) {
-    throw new RulesException($e->getMessage(), array(), $element);
+    throw new RulesEvaluationException($e->getMessage(), array(), $element);
   }
 }
 

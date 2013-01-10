@@ -65,7 +65,40 @@ class RulesDataUI {
       // Make the autocomplete textfield big enough so that it can display
       // descriptions without word wraps.
       '#size' => 75,
+      '#description' => t("The data selector helps you drill down into the data available to Rules. <em>To make entity fields appear in the data selector, you may have to use the condition 'entity has field' (or 'content is of type').</em> More useful tips about data selection is available in <a href='@url'>the online documentation</a>.",
+        array('@url' => rules_external_help('data-selection'))),
     );
+
+    $cache = rules_get_cache();
+    $form['types_help'] = array(
+      '#theme' => 'rules_settings_help',
+      '#heading' => t('Data types'),
+    );
+    if ($info['type'] == '*') {
+      $type_labels[] = t('any');
+    }
+    else {
+      $types = is_array($info['type']) ? $info['type'] : array($info['type']);
+      $type_labels = array();
+      foreach ($types as $type) {
+        $type_labels[] = drupal_ucfirst(isset($cache['data_info'][$type]['label']) ? $cache['data_info'][$type]['label'] : $type);
+      }
+    }
+    $form['types_help']['#text'] = format_plural(count($type_labels), 'Select data of the type %types.', 'Select data of the types %types.', array('%types' => implode(', ', $type_labels)));
+
+    if (!empty($info['translatable'])) {
+      if ($info['custom translation language']) {
+        $text = t('If a multilingual data source (i.e. a translatable field) is given, the argument is translated to the configured language.');
+      }
+      else {
+        $text = t('If a multilingual data source (i.e. a translatable field) is given, the argument is translated to the current interface language.');
+      }
+      $form['translation'] = array(
+        '#theme' => 'rules_settings_help',
+        '#text' => $text,
+        '#heading' => t('Translation'),
+      );
+    }
     $form['help'] = array(
       '#theme' => 'rules_data_selector_help',
       '#variables' => $element->availableVariables(),
@@ -130,7 +163,7 @@ class RulesDataUIText extends RulesDataUI implements RulesDataDirectInputFormInt
       $element->call('loadBasicInclude');
       $form[$name] = array(
         '#type' => 'select',
-        '#options' => $info['options list']($element, $name),
+        '#options' => call_user_func($info['options list'], $element, $name),
       );
     }
     else {
@@ -165,9 +198,11 @@ class RulesDataUITextToken extends RulesDataUIText {
 
   public static function inputForm($name, $info, $settings, RulesPlugin $element) {
     $form = parent::inputForm($name, $info, $settings, $element);
-    $form[$name]['#element_validate'][] = 'rules_ui_element_token_validate';
-    $form[$name]['#description'] = t('May only contain lowercase letters, numbers, and underscores and has to start with a letter.');
-    $form[$name]['#rows'] = 1;
+    if ($form[$name]['#type'] == 'textarea') {
+      $form[$name]['#element_validate'][] = 'rules_ui_element_token_validate';
+      $form[$name]['#description'] = t('May only contain lowercase letters, numbers, and underscores and has to start with a letter.');
+      $form[$name]['#rows'] = 1;
+    }
     return $form;
   }
 }
@@ -274,7 +309,9 @@ class RulesDataUIDate extends RulesDataUIText {
     $form[$name]['#element_validate'][] = 'rules_ui_element_date_validate';
     // Note that the date input evaluator takes care for parsing dates using
     // strtotime() into a timestamp, which is the internal date format.
-    $form[$name]['#description'] = t('The date in GMT. Format: %format or other values in GMT known by the PHP !strtotime function like "+1 day". Relative dates like "+1 day" or "now" relate to the evaluation time.', array('%format' => gmdate('Y-m-d H:i:s', time() + 86400), '!strtotime' => l('strtotime()', 'http://php.net/strtotime')));
+    $form[$name]['#description'] = t('The date in GMT. You may enter a fixed time (like %format) or any other values in GMT known by the PHP !strtotime function (like "+1 day"). Relative dates like "+1 day" or "now" relate to the evaluation time.',
+      array('%format' => gmdate('Y-m-d H:i:s', time() + 86400),
+            '!strtotime' => l('strtotime()', 'http://php.net/strtotime')));
 
     //TODO: Leverage the jquery datepicker+timepicker once a module providing
     //the timpeicker is available.
@@ -342,9 +379,10 @@ class RulesDataUIListText extends RulesDataUIText {
 
     if ($form[$name]['#type'] == 'textarea') {
       // Fix up the value to be an array during after build.
+      $form[$name]['#delimiter'] = "\n";
       $form[$name]['#after_build'][] = 'rules_ui_list_textarea_after_build';
       $form[$name]['#pre_render'][] = 'rules_ui_list_textarea_pre_render';
-      $form[$name]['#default_value'] = implode("\n", $settings[$name]);
+      $form[$name]['#default_value'] = !empty($settings[$name]) ? implode("\n", $settings[$name]) : NULL;
       $form[$name]['#description'] = t('A list of values, one on each line.');
     }
     else {
@@ -373,7 +411,7 @@ class RulesDataUIListInteger extends RulesDataUIListText {
     if ($form[$name]['#type'] == 'textarea') {
       $form[$name]['#description'] = t('A list of integers, separated by commas. E.g. enter "1, 2, 3".');
       $form[$name]['#delimiter'] = ',';
-      $form[$name]['#default_value'] = implode(", ", $settings[$name]);
+      $form[$name]['#default_value'] = !empty($settings[$name]) ? implode(", ", $settings[$name]) : NULL;
       $form[$name]['#element_validate'][] = 'rules_ui_element_integer_list_validate';
       $form[$name]['#rows'] = 1;
     }
@@ -403,7 +441,7 @@ class RulesDataUIListToken extends RulesDataUIListInteger {
 class RulesDataUIEntity extends RulesDataUIText {
 
   public static function getDefaultMode() {
-    return 'select';
+    return 'selector';
   }
 
   public static function inputForm($name, $info, $settings, RulesPlugin $element) {
@@ -417,7 +455,7 @@ class RulesDataUIEntity extends RulesDataUIText {
       }
       $form[$name]['#title'] = t('@entity identifier', array('@entity' => $entity_info['label']));
       $entity_label = strtolower($entity_info['label'][0]) . substr($entity_info['label'], 1);
-      $form[$name]['#description'] = t('Specify an identfier of a @entity.', array('@entity' => $entity_label));
+      $form[$name]['#description'] = t('Specify an identifier of a @entity.', array('@entity' => $entity_label));
     }
     return $form;
   }
@@ -430,6 +468,34 @@ class RulesDataUIEntityExportable extends RulesDataUIEntity {
 
   public static function getDefaultMode() {
     return 'input';
+  }
+}
+
+/**
+ * UI for taxonomy vocabularies.
+ *
+ * @see RulesTaxonomyVocabularyWrapper
+ */
+class RulesDataUITaxonomyVocabulary extends RulesDataUIEntity {
+
+  public static function getDefaultMode() {
+    return 'input';
+  }
+
+  public static function inputForm($name, $info, $settings, RulesPlugin $element) {
+    // Add an options list of all vocabularies if there is none yet.
+    if (!isset($info['options list'])) {
+      $info['options list'] = array('RulesDataUITaxonomyVocabulary', 'optionsList');
+    }
+    return parent::inputForm($name, $info, $settings, $element);
+  }
+
+  public static function optionsList() {
+    $options = array();
+    foreach (taxonomy_vocabulary_get_names() as $machine_name => $vocab) {
+      $options[$machine_name] = $vocab->name;
+    }
+    return $options;
   }
 }
 
@@ -448,9 +514,8 @@ class RulesDataUIListEntity extends RulesDataUIListInteger {
       }
       $form[$name]['#title'] = t('@entity identifiers', array('@entity' => $entity_info['label']));
       $entity_label = strtolower($entity_info['label'][0]) . substr($entity_info['label'], 1);
-      $form[$name]['#description'] = t('Specify a comma-separated list of identfiers of @entity entities.', array('@entity' => $entity_label));
+      $form[$name]['#description'] = t('Specify a comma-separated list of identifiers of @entity entities.', array('@entity' => $entity_label));
     }
     return $form;
   }
 }
-
