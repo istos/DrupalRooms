@@ -1,0 +1,40 @@
+name = Rooms
+description = Install Rooms module with commonly used features pre-configured.
+version = VERSION
+core = 7.x
+dependencies[] = block
+dependencies[] = color
+dependencies[] = comment
+dependencies[] = contextual
+dependencies[] = dashboard
+dependencies[] = help
+dependencies[] = image
+dependencies[] = list
+dependencies[] = menu
+dependencies[] = number
+dependencies[] = options
+dependencies[] = path
+dependencies[] = taxonomy
+dependencies[] = dblog
+dependencies[] = search
+dependencies[] = shortcut
+dependencies[] = toolbar
+dependencies[] = overlay
+dependencies[] = field_ui
+dependencies[] = file
+dependencies[] = rdf
+
+dependencies[] = "rooms"
+dependencies[] = "rooms_ui"
+dependencies[] = "rooms_unit"
+dependencies[] = "rooms_availability"
+dependencies[] = "rooms_availability_reference"
+dependencies[] = "rooms_pricing"
+dependencies[] = "rooms_booking"
+dependencies[] = "rooms_booking_manager"
+
+; Information added by drupal.org packaging script on 2012-08-01
+version = "7.15"
+project = "drupal"
+datestamp = "1343839327"
+

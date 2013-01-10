@@ -1,0 +1,364 @@
+<?php
+
+/**
+ * @file
+ * Sets up the base table for our entity and a table to store information about
+ * the entity types.
+ */
+
+ 
+/**
+ * Implements hook_install
+ */
+function rooms_unit_install() {
+  rooms_description_content_type_install();
+}
+
+/**
+ * Implements hook_uninstall
+ */
+function rooms_unit_uninstall() {
+  rooms_description_content_type_uninstall();
+}
+
+
+/**
+ * Implements hook_schema().
+ */
+function rooms_unit_schema() {
+  $schema = array();
+
+  $schema['rooms_units'] = array(
+    'description' => 'The base table for Rooms.',
+    'fields' => array(
+      'unit_id' => array(
+        'description' => 'Primary Key: Identifier for a Bookable Unit.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'type' => array(
+        'description' => 'The {unit_type}.type of this Bookable Unit.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'language' => array(
+        'description' => 'The language of the Unit.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'name' => array(
+        'description' => 'The name of the Unit - a human-readable identifier.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp when the Unit was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'changed' => array(
+        'description' => 'The Unix timestamp when the Unit was most recently saved.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'base_price' => array(
+        'description' => 'The default cost per night for the unit',
+        'type' => 'numeric',
+        'not null' => TRUE,
+        'precision' => 10,
+        'scale' => 2,
+        'default' => 0,
+      ),
+      'cot_surcharge' => array(
+        'description' => 'The default cot_surcharge',
+        'type' => 'numeric',
+        'not null' => TRUE,
+        'precision' => 10,
+        'scale' => 2,
+        'default' => 0,
+      ),
+      'default_state' => array(
+        'description' => 'The default booking state for the room',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'bookable' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+        'size' => 'tiny',
+        'description' => 'Whether the unit is available for booking or not.',
+      ),
+      'sleeps' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+        'size' => 'tiny',
+        'description' => 'How many people can sleep in a unit',
+      ),
+      'children' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'How many children can sleep in a unit',
+      ),
+      'data' => array(
+        'type' => 'blob',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'A serialized array of additional data.',
+      ),
+    ),
+    'primary key' => array('unit_id'),
+    'indexes' => array(
+      'type' => array('type'),
+    ),
+  );
+
+  $schema['rooms_unit_type'] = array(
+    'description' => 'Stores information about defined unit types.',
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique unit type identifier.',
+      ),
+      'type' => array(
+        'description' => 'The machine-readable name of this unit type.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'label' => array(
+        'description' => 'The human-readable name of this unit type.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'weight' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'The weight of this room type in relation to others.',
+      ),
+      'data' => array(
+        'type' => 'text',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+        'description' => 'A serialized array of additional data related to this unit type.',
+      ),
+      // These two fields provide exportable support and come from Entity module definitions
+      'status' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0x01,
+        'size' => 'tiny',
+        'description' => 'The exportable status of the entity.',
+      ),
+      'module' => array(
+        'description' => 'The name of the providing module if the entity has been defined in code.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('id'),
+    'unique keys' => array(
+      'type' => array('type'),
+    ),
+  );
+
+  return $schema;
+}
+
+
+/**
+ * Create content type for rooms unit type description
+ */
+function rooms_description_content_type_install() {
+  $t = get_t();
+  // We define the node type as an associative array.
+  if (!in_array('unit_description', node_type_get_names())) {
+    $unit_description = array(
+      'type' => 'unit_description',
+      'name' => $t('Unit Description'),
+      'base' => 'node_content',
+      'description' => $t('Bookable Unit Description.'),
+      'title_label' => $t('Title'),
+      'custom' => TRUE,
+    );
+  }
+
+  $content_type = node_type_set_defaults($unit_description);
+  
+  foreach (_rooms_description_installed_fields() as $field) {
+    field_create_field($field);
+  }
+  
+  foreach (_rooms_description_installed_instances() as $instance) {
+    $instance['entity_type'] = 'node';
+    $instance['bundle'] = $unit_description['type'];
+    field_create_instance($instance);
+  }
+
+  node_type_save($content_type);
+}
+
+
+
+/**
+ * Create fields on content type for rooms bookable unit description
+ */
+function _rooms_description_installed_fields() {
+  $t = get_t();
+  return array(
+    'unit_description_description' => array(
+      'field_name' => 'unit_description_description',
+      'type'        => 'text',
+      'label' => $t('Room type description'), 
+    ),
+    'unit_description_image' => array(
+      'field_name' => 'unit_description_image',
+      'type'       => 'image',
+      'cardinality' => 1,
+      'label' => 'Image', 
+    ),
+  );
+}
+
+
+function _rooms_description_installed_instances() {
+  $t = get_t();
+  return array(
+    'unit_description_description' => array(
+      'field_name' => 'unit_description_description',
+      'label'       => $t('A description of this room type unit'),
+      'widget'      => array(
+        'type'    => 'text_textarea',
+      ),
+      'display' => array(
+        'unit_description_list' => array(
+          'label' => 'hidden',
+          'type' => 'unit_description_description',
+        ),
+      ),
+    ),
+    'unit_description_image' => array(
+      'field_name'  => 'unit_description_image',
+      'label'       => $t('Image'),
+      'required'    => FALSE,
+      'widget' => array(
+        'type'    => 'image_image',
+        'weight'  => 2.10,
+      ),
+      'display' => array(
+        'unit_description_list' => array(
+          'label' => 'hidden',
+          'type' => 'image_link_content__thumbnail',
+        ),
+      ),
+    ),
+  );
+}
+
+
+/*
+ * Remove content type Unit Description
+ */
+ 
+function rooms_description_content_type_uninstall() {
+
+  $sql = 'SELECT nid FROM {node} n WHERE n.type = :type';
+  $result = db_query($sql, array(':type' => 'unit_description'));
+  $nids = array();
+  foreach ($result as $row) {
+    $nids[] = $row->nid;
+  }
+
+  node_delete_multiple($nids);
+
+  foreach (array_keys(_rooms_description_installed_fields()) as $field) {
+    field_delete_field($field);
+  }
+
+  $instances = field_info_instances('node', 'unit_description');
+  foreach ($instances as $instance_name => $instance) {
+    field_delete_instance($instance);
+  }
+
+  node_type_delete('unit_description');
+
+  field_purge_batch(1000);
+}
+
+
+
+/**
+ * Changes bace_price field to numeric storage
+ */
+function rooms_unit_update_7001() {
+  $base_price_field_spec = array(
+    'description' => 'The default cost per night for the unit',
+    'type' => 'numeric',
+    'not null' => TRUE,
+    'precision' => 10,
+    'scale' => 2,
+    'default' => 0,
+  );
+    
+  db_change_field('rooms_units', 'base_price', 'base_price', $base_price_field_spec);
+  
+  return t('Schema for the commerce_order and commerce_order_revision tables has been updated.');
+
+}
+
+
+/**
+ * Create rooms_description content type
+ */
+function rooms_unit_update_7002() {
+  rooms_description_content_type_install();  
+}
+
+
+/**
+ * Add fields for children
+ */
+function rooms_unit_update_7003() {
+  $cot_surcharge = array(
+    'description' => 'The default cot_surcharge',
+    'type' => 'numeric',
+    'not null' => TRUE,
+    'precision' => 10,
+    'scale' => 2,
+    'default' => 0,
+  );
+
+  db_add_field('rooms_units', 'cot_surcharge', $cot_surcharge);
+
+
+  $children = array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+    'size' => 'tiny',
+    'description' => 'How many children can sleep in a unit',
+  );
+
+  db_add_field('rooms_units', 'children', $children);
+}
