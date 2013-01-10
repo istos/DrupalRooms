@@ -2,6 +2,12 @@
   float: left;
   margin-right: 1em;
 }
+
+.addressfield-container-inline.country-GB > div.form-item {
+  float: none;
+  margin-right: auto;
+}
+
 /* Clear-fix markup for the inline container */
 .addressfield-container-inline:after {
   content: ".";
