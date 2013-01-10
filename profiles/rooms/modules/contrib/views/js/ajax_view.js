@@ -1,6 +1,5 @@
 /**
- * @file ajaxView.js
- *
+ * @file
  * Handles AJAX fetching of views, including filter submission and response.
  */
 (function ($) {
@@ -12,13 +11,13 @@ Drupal.behaviors.ViewsAjaxView = {};
 Drupal.behaviors.ViewsAjaxView.attach = function() {
   if (Drupal.settings && Drupal.settings.views && Drupal.settings.views.ajaxViews) {
     $.each(Drupal.settings.views.ajaxViews, function(i, settings) {
-      // @todo: Figure out where to store the object.
-      new Drupal.views.ajaxView(settings);
+      Drupal.views.instances[i] = new Drupal.views.ajaxView(settings);
     });
   }
 };
 
 Drupal.views = {};
+Drupal.views.instances = {};
 
 /**
  * Javascript object for a certain view.
@@ -39,7 +38,7 @@ Drupal.views.ajaxView = function(settings) {
   var queryString = window.location.search || '';
   if (queryString !== '') {
     // Remove the question mark and Drupal path component if any.
-    var queryString = queryString.slice(1).replace(/q=[^&]+&?/, '');
+    var queryString = queryString.slice(1).replace(/q=[^&]+&?|&?render=[^&]+/, '');
     if (queryString !== '') {
       // If there is a '?' in ajax_path, clean url are on and & should be used to add parameters.
       queryString = ((/\?/.test(ajax_path)) ? '&' : '?') + queryString;

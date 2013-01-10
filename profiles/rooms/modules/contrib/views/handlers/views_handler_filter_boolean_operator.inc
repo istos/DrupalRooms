@@ -1,4 +1,10 @@
 <?php
+
+/**
+ * @file
+ * Definition of views_handler_filter_boolean_operator.
+ */
+
 /**
  * Simple filter to handle matching of boolean values
  *
@@ -10,6 +16,8 @@
  *    - on-off: On/Off
  *    - enabled-disabled: Enabled/Disabled
  * - accept null: Treat a NULL value as false.
+ * - use equal: If you use this flag the query will use = 1 instead of <> 0.
+ *   This might be helpful for performance reasons.
  *
  * @ingroup views_filter_handlers
  */
@@ -104,7 +112,7 @@ class views_handler_filter_boolean_operator extends views_handler_filter {
         $form_state['input'][$identifier] = $this->value;
       }
       // If we're configuring an exposed filter, add an <Any> option.
-      if (empty($form_state['exposed']) || empty($this->options['required'])) {
+      if (empty($form_state['exposed']) || empty($this->options['expose']['required'])) {
         $any_label = variable_get('views_exposed_filter_any_label', 'new_any') == 'old_any' ? '<Any>' : t('- Any -');
         if ($form['value']['#type'] != 'select') {
           $any_label = check_plain($any_label);
@@ -121,6 +129,9 @@ class views_handler_filter_boolean_operator extends views_handler_filter {
   }
 
   function admin_summary() {
+    if ($this->is_a_group()) {
+      return t('grouped');
+    }
     if (!empty($this->options['exposed'])) {
       return t('exposed');
     }

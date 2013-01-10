@@ -1,18 +1,14 @@
 <?php
+
 /**
  * @file
- * Provide views data and handlers for comment.module
- */
-
-/**
- * @defgroup views_comment_module comment.module handlers
+ * Provide views data and handlers for comment.module.
  *
- * Includes the tables 'comment' and 'node_comment_statistics'
- * @{
+ * @ingroup views_module_handlers
  */
 
 /**
- * Implements hook_views_data()
+ * Implements hook_views_data().
  */
 
 function comment_views_data() {
@@ -172,6 +168,28 @@ function comment_views_data() {
     ),
   );
 
+
+  // Language field
+  if (module_exists('locale')) {
+    $data['comment']['language'] = array(
+      'title' => t('Language'),
+      'help' => t('The language the comment is in.'),
+      'field' => array(
+        'handler' => 'views_handler_field_locale_language',
+        'click sortable' => TRUE,
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_locale_language',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_locale_language',
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+    );
+  }
+
   $data['comments']['timestamp']['moved to'] = array('comment', 'changed');
   // changed (when comment was last updated)
   $data['comment']['changed'] = array(
@@ -256,6 +274,9 @@ function comment_views_data() {
     'field' => array(
       'handler' => 'views_handler_field_boolean',
       'click sortable' => TRUE,
+      'output formats' => array(
+        'approved-not-approved' => array(t('Approved'), t('Not Approved')),
+      ),
     ),
     'filter' => array(
       'handler' => 'views_handler_filter_boolean_operator',
@@ -502,7 +523,7 @@ function comment_views_data() {
       'handler' => 'views_handler_argument_numeric',
     ),
     'field' => array(
-      'handler' => 'views_handler_filter_user_name',
+      'handler' => 'views_handler_field_numeric',
     ),
   );
 
@@ -582,7 +603,7 @@ function comment_views_data_alter(&$data) {
 }
 
 /**
- * Implements hook_views_plugins
+ * Implements hook_views_plugins().
  */
 function comment_views_plugins() {
   return array(
@@ -639,7 +660,3 @@ function template_preprocess_views_view_row_comment(&$vars) {
   }
   $vars['comment'] = drupal_render($build);
 }
-
-/**
- * @}
- */

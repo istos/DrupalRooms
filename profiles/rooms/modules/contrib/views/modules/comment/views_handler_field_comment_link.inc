@@ -1,20 +1,24 @@
 <?php
+
+/**
+ * @file
+ * Definition of views_handler_field_comment_link.
+ */
+
 /**
  * Base field handler to present a link.
  *
  * @ingroup views_field_handlers
  */
-class views_handler_field_comment_link extends views_handler_field {
+class views_handler_field_comment_link extends views_handler_field_entity {
   function construct() {
     parent::construct();
-    $this->additional_fields['cid'] = 'cid';
-    $this->additional_fields['nid'] = 'nid';
   }
 
   function option_definition() {
     $options = parent::option_definition();
     $options['text'] = array('default' => '', 'translatable' => TRUE);
-    $options['link_to_node'] = array('default' => FALSE);
+    $options['link_to_node'] = array('default' => FALSE, 'bool' => TRUE);
     return $options;
   }
 
@@ -44,8 +48,9 @@ class views_handler_field_comment_link extends views_handler_field {
 
   function render_link($data, $values) {
     $text = !empty($this->options['text']) ? $this->options['text'] : t('view');
-    $nid = $this->get_value($values, 'nid');
-    $cid = $this->get_value($values, 'cid');
+    $comment = $this->get_value($values);
+    $nid = $comment->nid;
+    $cid = $comment->cid;
 
     $this->options['alter']['make_link'] = TRUE;
     $this->options['alter']['html'] = TRUE;

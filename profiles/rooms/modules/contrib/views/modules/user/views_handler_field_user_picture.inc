@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Definition of views_handler_field_user_picture.
+ */
+
+/**
  * Field handler to provide simple renderer that allows using a themed user link.
  *
  * @ingroup views_field_handlers
@@ -17,13 +22,27 @@ class views_handler_field_user_picture extends views_handler_field {
     if ($inline) {
       return 'span';
     }
+    if ($none_supported) {
+      if ($this->options['element_type'] === '0') {
+        return '';
+      }
+    }
+    if ($this->options['element_type']) {
+      return check_plain($this->options['element_type']);
+    }
+    if ($default_empty) {
+      return '';
+    }
+    if (isset($this->definition['element type'])) {
+      return $this->definition['element type'];
+    }
 
     return 'div';
   }
 
   function option_definition() {
     $options = parent::option_definition();
-    $options['link_photo_to_profile'] = array('default' => TRUE);
+    $options['link_photo_to_profile'] = array('default' => TRUE, 'bool' => TRUE);
     $options['image_style'] = array('default' => '');
     return $options;
   }
