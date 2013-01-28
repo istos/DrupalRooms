@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Drupal Rooms Slideshow feature.
+ */
+
+include_once 'drupal_rooms_slideshow.features.inc';

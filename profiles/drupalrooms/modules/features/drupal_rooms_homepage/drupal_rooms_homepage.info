@@ -1,0 +1,9 @@
+name = Drupal Rooms Home Page
+description = Drupal Rooms Home Page
+core = 7.x
+package = Features
+dependencies[] = ctools
+dependencies[] = page_manager
+features[ctools][] = page_manager:pages_default:1
+features[features_api][] = api:1
+features[page_manager_pages][] = homepage
