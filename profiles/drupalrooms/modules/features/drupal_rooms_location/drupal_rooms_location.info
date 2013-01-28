@@ -1,0 +1,16 @@
+name = Drupal Rooms Location
+description = Drupal Rooms Location
+core = 7.x
+package = Features
+dependencies[] = addressfield
+dependencies[] = features
+dependencies[] = field_sql_storage
+dependencies[] = geofield
+dependencies[] = leaflet
+dependencies[] = node
+dependencies[] = text
+features[features_api][] = api:1
+features[field][] = node-location-field_location_address
+features[field][] = node-location-field_location_directions
+features[field][] = node-location-field_location_map
+features[node][] = location
