@@ -14,3 +14,10 @@ dependencies[] = rooms_availability
 dependencies[] = commerce
 
 files[] = test/rooms_pricing_test.test
+
+; Information added by drupal.org packaging script on 2013-01-11
+version = "7.x-1.0-rc1"
+core = "7.x"
+project = "rooms"
+datestamp = "1357929525"
+

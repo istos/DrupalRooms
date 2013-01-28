@@ -1,4 +1,4 @@
-name = Rooms
+name = DrupalRooms
 description = Install Rooms module with commonly used features pre-configured.
 version = VERSION
 core = 7.x
@@ -19,10 +19,17 @@ dependencies[] = dblog
 dependencies[] = search
 dependencies[] = shortcut
 dependencies[] = toolbar
-dependencies[] = overlay
 dependencies[] = field_ui
 dependencies[] = file
 dependencies[] = rdf
+
+dependencies[] = "features"
+dependencies[] = "page_manager"
+dependencies[] = "views_content"
+dependencies[] = "panels"
+dependencies[] = "views_slideshow"
+dependencies[] = "flexslider"
+dependencies[] = "flexslider_views_slideshow"
 
 dependencies[] = "rooms"
 dependencies[] = "rooms_ui"
@@ -33,8 +40,5 @@ dependencies[] = "rooms_pricing"
 dependencies[] = "rooms_booking"
 dependencies[] = "rooms_booking_manager"
 
-; Information added by drupal.org packaging script on 2012-08-01
-version = "7.15"
-project = "drupal"
-datestamp = "1343839327"
-
+dependencies[] = "drupal_rooms_homepage"
+dependencies[] = "drupal_rooms_slideshow"

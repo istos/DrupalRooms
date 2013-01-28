@@ -22,3 +22,9 @@ files[] = views/rooms_unit_handler_unit_operations_field.inc
 files[] = views/rooms_unit_handler_unit_type_field.inc
 
 files[] = test/rooms_unit_test.test
+; Information added by drupal.org packaging script on 2013-01-11
+version = "7.x-1.0-rc1"
+core = "7.x"
+project = "rooms"
+datestamp = "1357929525"
+
