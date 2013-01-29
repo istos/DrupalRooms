@@ -1,6 +1,6 @@
 /**
  * @preserve
- * FullCalendar v1.5.1
+ * FullCalendar v1.5.4
  * http://arshaw.com/fullcalendar/
  *
  * Use fullcalendar.css for basic styling.
@@ -11,7 +11,7 @@
  * Dual licensed under the MIT and GPL licenses, located in
  * MIT-LICENSE.txt and GPL-LICENSE.txt respectively.
  *
- * Date: Sat Apr 9 14:09:51 2011 -0700
+ * Date: Wed Dec 19 15:58:32 2012 +0100
  *
  */
  
@@ -60,6 +60,7 @@ var defaults = {
 	
 	// locale
 	isRTL: false,
+	isSingleRow: false,
 	firstDay: 0,
 	monthNames: ['January','February','March','April','May','June','July','August','September','October','November','December'],
 	monthNamesShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
@@ -111,7 +112,7 @@ var rtlDefaults = {
 
 
 
-var fc = $.fullCalendar = { version: "1.5.1" };
+var fc = $.fullCalendar = { version: "1.5.4" };
 var fcViews = fc.views = {};
 
 
@@ -1395,7 +1396,7 @@ function parseISO8601(s, ignoreTimezone) { // ignoreTimezone defaults to false
 		return null;
 	}
 	var date = new Date(m[1], 0, 1);
-	if (ignoreTimezone || !m[14]) {
+	if (ignoreTimezone || !m[13]) {
 		var check = new Date(m[1], 0, 1, 9, 0);
 		if (m[3]) {
 			date.setMonth(m[3] - 1);
@@ -1431,9 +1432,11 @@ function parseISO8601(s, ignoreTimezone) { // ignoreTimezone defaults to false
 			m[10] || 0,
 			m[12] ? Number("0." + m[12]) * 1000 : 0
 		);
-		var offset = Number(m[16]) * 60 + (m[18] ? Number(m[18]) : 0);
-		offset *= m[15] == '-' ? 1 : -1;
-		date = new Date(+date + (offset * 60 * 1000));
+		if (m[14]) {
+			var offset = Number(m[16]) * 60 + (m[18] ? Number(m[18]) : 0);
+			offset *= m[15] == '-' ? 1 : -1;
+			date = new Date(+date + (offset * 60 * 1000));
+		}
 	}
 	return date;
 }
@@ -1656,8 +1659,9 @@ function sliceSegs(events, visEventEnds, start, end) {
 				msLength: segEnd - segStart
 			});
 		}
-	} 
-	return segs.sort(segCmp);
+	}
+	return segs;
+	//return segs.sort(segCmp);
 }
 
 
@@ -1740,29 +1744,26 @@ function setOuterHeight(element, height, includeMargins) {
 }
 
 
-// TODO: curCSS has been deprecated (jQuery 1.4.3 - 10/16/2010)
-
-
 function hsides(element, includeMargins) {
 	return hpadding(element) + hborders(element) + (includeMargins ? hmargins(element) : 0);
 }
 
 
 function hpadding(element) {
-	return (parseFloat($.curCSS(element[0], 'paddingLeft', true)) || 0) +
-	       (parseFloat($.curCSS(element[0], 'paddingRight', true)) || 0);
+	return (parseFloat($.css(element[0], 'paddingLeft', true)) || 0) +
+	       (parseFloat($.css(element[0], 'paddingRight', true)) || 0);
 }
 
 
 function hmargins(element) {
-	return (parseFloat($.curCSS(element[0], 'marginLeft', true)) || 0) +
-	       (parseFloat($.curCSS(element[0], 'marginRight', true)) || 0);
+	return (parseFloat($.css(element[0], 'marginLeft', true)) || 0) +
+	       (parseFloat($.css(element[0], 'marginRight', true)) || 0);
 }
 
 
 function hborders(element) {
-	return (parseFloat($.curCSS(element[0], 'borderLeftWidth', true)) || 0) +
-	       (parseFloat($.curCSS(element[0], 'borderRightWidth', true)) || 0);
+	return (parseFloat($.css(element[0], 'borderLeftWidth', true)) || 0) +
+	       (parseFloat($.css(element[0], 'borderRightWidth', true)) || 0);
 }
 
 
@@ -1772,20 +1773,20 @@ function vsides(element, includeMargins) {
 
 
 function vpadding(element) {
-	return (parseFloat($.curCSS(element[0], 'paddingTop', true)) || 0) +
-	       (parseFloat($.curCSS(element[0], 'paddingBottom', true)) || 0);
+	return (parseFloat($.css(element[0], 'paddingTop', true)) || 0) +
+	       (parseFloat($.css(element[0], 'paddingBottom', true)) || 0);
 }
 
 
 function vmargins(element) {
-	return (parseFloat($.curCSS(element[0], 'marginTop', true)) || 0) +
-	       (parseFloat($.curCSS(element[0], 'marginBottom', true)) || 0);
+	return (parseFloat($.css(element[0], 'marginTop', true)) || 0) +
+	       (parseFloat($.css(element[0], 'marginBottom', true)) || 0);
 }
 
 
 function vborders(element) {
-	return (parseFloat($.curCSS(element[0], 'borderTopWidth', true)) || 0) +
-	       (parseFloat($.curCSS(element[0], 'borderBottomWidth', true)) || 0);
+	return (parseFloat($.css(element[0], 'borderTopWidth', true)) || 0) +
+	       (parseFloat($.css(element[0], 'borderBottomWidth', true)) || 0);
 }
 
 
@@ -1952,7 +1953,6 @@ function firstDefined() {
 		}
 	}
 }
-
 
 
 fcViews.month = MonthView;
@@ -2714,6 +2714,48 @@ function BasicEventRenderer() {
 	}
 
 
+}
+
+fcViews.singleRowMonth = SingleRowMonthView;
+
+function SingleRowMonthView(element, calendar) {
+	var t = this;
+	
+	
+	// exports
+	t.render = render;
+	
+	// imports
+	BasicView.call(t, element, calendar, 'singleRowMonth');
+	var opt = t.opt;
+	var renderBasic = t.renderBasic;
+	var formatDate = calendar.formatDate;
+	
+	t.calendar.options.contentHeight = 58;
+	t.calendar.options.isSingleRow = true;
+	
+	function render(date, delta) {
+		if (delta) {
+			addMonths(date, delta);
+			date.setDate(1);
+		}
+		var start = cloneDate(date, true);
+		start.setDate(1);
+		var end = addMonths(cloneDate(start), 1);
+		var visStart = cloneDate(start);
+		var visEnd = cloneDate(end);
+		var firstDay = opt('firstDay');
+
+		t.title = formatDate(start, opt('titleFormat'));
+		t.start = start;
+		t.end = end;
+		t.visStart = visStart;
+		t.visEnd = visEnd;
+
+		renderBasic(1, 1, 31, true);
+	}
+	
+	
 }
 
 fcViews.agendaWeek = AgendaWeekView;
@@ -4544,7 +4586,7 @@ function DayEventRenderer() {
 			while (i<segCnt && (seg = segs[i]).row == rowI) {
 				// loop through segs in a row
 				top = arrayMax(colHeights.slice(seg.startCol, seg.endCol));
-				seg.top = top;
+				seg.top = (isFinite(top)) ? top : 0;
 				top += seg.outerHeight;
 				for (k=seg.startCol; k<seg.endCol; k++) {
 					colHeights[k] = top;
@@ -4584,10 +4626,16 @@ function DayEventRenderer() {
 		}
 		return $(elements);
 	}
-	
-	
+
+
+	function daysInMonth(iMonth, iYear) {
+		return 32 - new Date(iYear, iMonth, 32).getDate();
+	}
+
+
 	function daySegHTML(segs) { // also sets seg.left and seg.outerWidth
 		var rtl = opt('isRTL');
+		var isSingleRow = opt('isSingleRow');
 		var i;
 		var segCnt=segs.length;
 		var seg;
@@ -4618,8 +4666,17 @@ function DayEventRenderer() {
 				if (seg.isEnd) {
 					classes.push('fc-corner-left');
 				}
-				leftCol = dayOfWeekCol(seg.end.getDay()-1);
-				rightCol = dayOfWeekCol(seg.start.getDay());
+				if (isSingleRow) {
+					leftCol = seg.start.getDate()-1;
+					rightCol = seg.end.getDate()-2;
+					if (seg.end.getMonth() > t.start.getMonth()) {
+						rightCol += daysInMonth(t.start.getMonth(), t.start.getYear());
+					}
+				}
+				else {
+					leftCol = dayOfWeekCol(seg.start.getDay());
+					rightCol = dayOfWeekCol(seg.end.getDay()-1);
+				}
 				left = seg.isEnd ? colContentLeft(leftCol) : minLeft;
 				right = seg.isStart ? colContentRight(rightCol) : maxLeft;
 			}else{
@@ -4629,8 +4686,17 @@ function DayEventRenderer() {
 				if (seg.isEnd) {
 					classes.push('fc-corner-right');
 				}
-				leftCol = dayOfWeekCol(seg.start.getDay());
-				rightCol = dayOfWeekCol(seg.end.getDay()-1);
+				if (isSingleRow) {
+					leftCol = seg.start.getDate()-1;
+					rightCol = seg.end.getDate()-2;
+					if (seg.end.getMonth() > t.start.getMonth()) {
+						rightCol += daysInMonth(t.start.getMonth(), t.start.getYear());
+					}
+				}
+				else {
+					leftCol = dayOfWeekCol(seg.start.getDay());
+					rightCol = dayOfWeekCol(seg.end.getDay()-1);
+				}
 				left = seg.isStart ? colContentLeft(leftCol) : minLeft;
 				right = seg.isEnd ? colContentRight(rightCol) : maxLeft;
 			}
@@ -5155,6 +5221,7 @@ function HoverListener(coordinateGrid) {
 	
 	
 	function mouse(ev) {
+		_fixUIEvent(ev); // see below
 		var newCell = coordinateGrid.cell(ev.pageX, ev.pageY);
 		if (!newCell != !cell || newCell && (newCell.row != cell.row || newCell.col != cell.col)) {
 			if (newCell) {
@@ -5178,6 +5245,19 @@ function HoverListener(coordinateGrid) {
 	
 }
 
+
+
+// this fix was only necessary for jQuery UI 1.8.16 (and jQuery 1.7 or 1.7.1)
+// upgrading to jQuery UI 1.8.17 (and using either jQuery 1.7 or 1.7.1) fixed the problem
+// but keep this in here for 1.8.16 users
+// and maybe remove it down the line
+
+function _fixUIEvent(event) { // for issue 1168
+	if (event.pageX === undefined) {
+		event.pageX = event.originalEvent.pageX;
+		event.pageY = event.originalEvent.pageY;
+	}
+}
 function HorizontalPositionCache(getElement) {
 
 	var t = this,
