@@ -1,0 +1,123 @@
+/* This file will hold styles for the mobile version of your website (mobile first). */
+/* This also can include ANY global CSS that applies site-wide. Unless overwritten by a more specific style rule, CSS declarations in global.css will apply site-wide. */
+
+
+body {
+	font: 15px/1.5 'Cambria', Arial, 'Liberation Sans', FreeSans, sans-serif;
+	background: #150702 url(../images/black.png) repeat-x;
+	background-attachment: fixed;
+}
+
+h1 {
+	font-family: "Nadia Serif";
+	text-shadow: 0 1px 0 #fff;
+	font-size: 25px;
+}
+
+.container-12 {
+	max-width: 940px !important;
+	margin-left: auto !important;
+	margin-right: auto !important;
+	width: 89% !important;
+}
+
+.zone-content {
+	-moz-box-shadow: 0 0 5px 3px #323131;
+	-webkit-box-shadow: 0 0 5px 3px #323131;
+	box-shadow: 0 0 5px 3px #323131;
+  border-bottom: 6px solid #807f7e;
+  background: white;
+}
+.region-content {
+	margin: 0 !important;
+	width: 100% !important;
+}
+.panels-flexible-region-1-center {
+	width: 100%;
+}
+
+.flexslider {
+	-webkit-border-radius: 0;
+	-moz-border-radius: 0;
+	-o-border-radius: 0;
+	border-radius: 0;
+	border: 0;
+	margin-bottom: 0;
+}
+.flex-nav-container {
+	margin-bottom: 15px;
+}
+
+.views-field-field-slide-text {
+	color: white;
+	margin-top: -38px;
+	font-size: 26px;
+	text-align: center;
+}
+.views-field-field-slide-text div {
+	display: inline-block;
+	background: rgba(0,0,0,0.6);
+	width: 100%;
+}
+.views-field-field-slide-image {
+	margin-top: -20px;
+}
+
+.zone-branding {
+	border-top: 6px solid #807f7e;
+	margin-top: 40px;
+	background: white;
+	padding: 20px 0;
+	-moz-box-shadow: 0 0 5px 3px #323131;
+	-webkit-box-shadow: 0 0 5px 3px #323131;
+	box-shadow: 0 0 5px 3px #323131;
+}
+
+#main-menu {
+	margin-left: 50px;
+	display: block;
+	margin-top: 10px;
+}
+#main-menu li {
+	font-size: 13px;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	background: none;
+	margin: 0 3px 0 0;
+	padding: 0;
+}
+#main-menu li a {
+	position: relative;
+	color: #000;
+	text-align: center;
+	text-decoration: none;
+	text-transform: uppercase;
+	margin: 0;
+	padding: 5px 10px;
+	font-size: 16px;
+	font-family: 'Abel', sans-serif;
+}
+
+.page-home #page-title {
+	display: none;
+}
+.page-home .pane-custom {
+	margin: 0 15px;
+}
+
+.zone-footer {
+	color: #8e8a88;
+	margin-top: 5px;
+	margin-bottom: 30px;
+}
+.zone-footer a {
+	color: #8e8a88;
+	text-decoration: none;
+}
+
+.logo-img {
+	margin-right: 0;
+	margin-left: 10px;
+}
+.logo-img img {
+	width: 100%;
+}

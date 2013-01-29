@@ -69,7 +69,7 @@ function drupalrooms_install() {
   filter_format_save($full_html_format);
 
   // Enable some standard blocks.
-  $default_theme = variable_get('theme_default', 'bartik');
+  $default_theme = variable_get('theme_default', 'rooms_theme');
   $admin_theme = 'seven';
   $blocks = array(
     array(
@@ -79,16 +79,6 @@ function drupalrooms_install() {
       'status' => 1,
       'weight' => 0,
       'region' => 'content',
-      'pages' => '',
-      'cache' => -1,
-    ),
-    array(
-      'module' => 'search',
-      'delta' => 'form',
-      'theme' => $default_theme,
-      'status' => 1,
-      'weight' => -1,
-      'region' => 'sidebar_first',
       'pages' => '',
       'cache' => -1,
     ),
@@ -114,21 +104,11 @@ function drupalrooms_install() {
     ),
     array(
       'module' => 'system',
-      'delta' => 'navigation',
-      'theme' => $default_theme,
-      'status' => 1,
-      'weight' => 0,
-      'region' => 'sidebar_first',
-      'pages' => '',
-      'cache' => -1,
-    ),
-    array(
-      'module' => 'system',
       'delta' => 'powered-by',
       'theme' => $default_theme,
       'status' => 1,
       'weight' => 10,
-      'region' => 'footer',
+      'region' => 'footer_second',
       'pages' => '',
       'cache' => -1,
     ),
@@ -178,16 +158,6 @@ function drupalrooms_install() {
       'theme' => $admin_theme,
       'status' => 1,
       'weight' => 0,
-      'region' => 'dashboard_sidebar',
-      'pages' => '',
-      'cache' => -1,
-    ),
-    array(
-      'module' => 'search',
-      'delta' => 'form',
-      'theme' => $admin_theme,
-      'status' => 1,
-      'weight' => -10,
       'region' => 'dashboard_sidebar',
       'pages' => '',
       'cache' => -1,
