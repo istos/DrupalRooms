@@ -1,0 +1,17 @@
+name = Drupal Rooms Standalone Unit
+description = Drupal Rooms Standalone Unit
+core = 7.x
+package = Features
+dependencies[] = entity
+dependencies[] = features
+dependencies[] = field_sql_storage
+dependencies[] = image
+dependencies[] = rooms_availability_reference
+dependencies[] = rooms_unit
+dependencies[] = text
+features[features_api][] = api:1
+features[field][] = rooms_unit-standard_unit-field_availability_calendar
+features[field][] = rooms_unit-standard_unit-field_description
+features[field][] = rooms_unit-standard_unit-field_images
+features[rooms_unit_type][] = deluxe_unit
+features[rooms_unit_type][] = standard_unit

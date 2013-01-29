@@ -1,0 +1,83 @@
+<?php
+/**
+ * @file
+ * Code for the Drupal Rooms Unit Types feature.
+ */
+
+include_once 'drupal_rooms_unit_types.features.inc';
+
+
+/*
+ * Implements hook_enable()
+ */
+function drupal_rooms_unit_types_enable() {
+
+	_drupal_rooms_unit_types_create_standard_room();
+  _drupal_rooms_unit_types_create_deluxe_room();
+
+}
+
+
+function _drupal_rooms_unit_types_create_standard_room() {
+	// Create a node of type Unit Description
+	$node = new stdClass();
+  $node->type = 'unit_description';
+  node_object_prepare($node);
+  $node->title = 'Standard Description';
+  node_save($node);
+
+
+  $rooms_unit = rooms_unit_get_types('standard_unit');
+	$rooms_unit->data['rooms_description_source'] = 'Standard Description:' . $node->nid;
+	entity_save('standard_unit', $rooms_unit);
+
+
+	// Create a Bookable Unit
+	$unit = rooms_unit_create(array('type' => 'standard_unit'));
+	$unit->name = 'Standard';
+	$unit->default_state = ROOMS_AVAILABLE;
+	$unit->save();
+
+	$unit->field_availability_calendar['und'][0]['unit_id'] = $unit->unit_id;
+	$unit->save();
+
+
+	// Create a node of type Drupal Rooms Standalone Unit
+	$node = new stdClass();
+  $node->type = 'drupal_rooms_standalone_unit';
+  node_object_prepare($node);
+  $node->title = 'Standard Room';
+  $node->field_standaloneunit_av_calendar['und'][0]['unit_id'] = $unit->unit_id;
+  node_save($node);
+}
+
+
+function _drupal_rooms_unit_types_create_deluxe_room() {
+	// Create a node of type Unit Description
+	$node = new stdClass();
+  $node->type = 'unit_description';
+  node_object_prepare($node);
+  $node->title = 'Deluxe Description';
+  node_save($node);
+
+
+	$rooms_unit = rooms_unit_get_types('deluxe_unit');
+	$rooms_unit->data['rooms_description_source'] = 'Deluxe Description:' . $node->nid;
+	entity_save('deluxe_unit', $rooms_unit);
+
+
+	// Create a Bookable Unit
+	$unit = rooms_unit_create(array('type' => 'deluxe_unit'));
+	$unit->name = 'Deluxe';
+	$unit->default_state = ROOMS_AVAILABLE;
+	$unit->save();
+
+
+	// Create a node of type Drupal Rooms Standalone Unit
+	$node = new stdClass();
+  $node->type = 'drupal_rooms_standalone_unit';
+  node_object_prepare($node);
+  $node->title = 'Deluxe Room';
+  $node->field_standaloneunit_av_calendar['und'][0]['unit_id'] = $unit->unit_id;
+  node_save($node);
+}

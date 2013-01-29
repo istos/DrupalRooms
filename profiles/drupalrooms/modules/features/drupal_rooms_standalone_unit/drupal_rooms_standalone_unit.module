@@ -1,0 +1,7 @@
+<?php
+/**
+ * @file
+ * Code for the Drupal Rooms Standalone Unit feature.
+ */
+
+include_once 'drupal_rooms_standalone_unit.features.inc';

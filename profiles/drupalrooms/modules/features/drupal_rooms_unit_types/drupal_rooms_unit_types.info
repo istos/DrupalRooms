@@ -1,0 +1,16 @@
+name = Drupal Rooms Unit Types
+description = Drupal Rooms Unit Types
+core = 7.x
+package = Features
+dependencies[] = features
+dependencies[] = field_sql_storage
+dependencies[] = image
+dependencies[] = node
+dependencies[] = rooms_availability_reference
+dependencies[] = text
+dependencies[] = drupal_rooms_standalone_unit
+features[features_api][] = api:1
+features[field][] = node-drupal_rooms_standalone_unit-field_standaloneunit_av_calendar
+features[field][] = node-drupal_rooms_standalone_unit-field_standaloneunit_description
+features[field][] = node-drupal_rooms_standalone_unit-field_standaloneunit_images
+features[node][] = drupal_rooms_standalone_unit
