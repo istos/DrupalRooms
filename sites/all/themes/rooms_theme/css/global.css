@@ -272,3 +272,155 @@ body.node-type-location .region-content {
 td.room_placebooking {
 	display: none;
 }
+
+.cal {
+	width: 100%;
+}
+.cal tr:hover td {
+	background: none;
+}
+.cal .fc-header {
+  background: #df9b31; /* Old browsers */
+  background: -moz-linear-gradient(top,  #df9b31 20%, #ce7416 80%); /* FF3.6+ */
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(20%,#df9b31), color-stop(80%,#ce7416)); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top,  #df9b31 20%,#ce7416 80%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top,  #df9b31 20%,#ce7416 80%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top,  #df9b31 20%,#ce7416 80%); /* IE10+ */
+  background: linear-gradient(to bottom,  #df9b31 20%,#ce7416 80%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#df9b31', endColorstr='#ce7416',GradientType=0 ); /* IE6-9 */
+
+  box-shadow: rgba(0, 0, 0, 0.5) 0 0 1px inset, rgba(0, 0, 0, 0.3) 0 0 5px inset, rgba(0, 0, 0, 0.2) 0 0 5px;
+  border: none;
+  color: #fff;
+  height: 53px;
+  margin: 0;
+  position: relative;
+}
+.cal .fc-header h2 {
+  font-size: 20px;
+  line-height: 53px;
+  margin: 0;
+  text-shadow: rgba(0,0,0,0.5) 0 1px;
+}
+.cal .fc-header:before {
+  content: "";
+  background: url(../images/calendar-ring.png) top no-repeat;
+  display: block;
+  position: absolute;
+  left: 50px;
+  top: -15px;
+  height: 32px;
+  width: 12px;
+}
+.cal .fc-header:after {
+  content: "";
+  background: url(../images/calendar-ring.png) top no-repeat;
+  display: block;
+  position: absolute;
+  right: 50px;
+  top: -15px;
+  height: 32px;
+  width: 12px;
+}
+.cal td.fc-header-center {
+  text-align: center;
+  width: 48%;
+}
+.cal .fc-header-left,
+.cal .fc-header-right {
+  width: 50px;
+}
+.cal .fc-header-left .fc-button,
+.cal .fc-header-right .fc-header-space {
+  display: none;
+}
+.cal .fc-button {
+  background: none;
+  border: none;
+}
+.cal .fc-button .fc-button-inner {
+  background: none;
+  border: none;
+  padding: 13px 20px;
+}
+.cal .fc-button .fc-button-effect {
+  display: none;
+}
+.cal .fc-button-content {
+  background: url(../images/calendar-arrows.png) 0 center no-repeat;
+  color: transparent;
+  padding: 0;
+  width: 11px;
+}
+.cal .fc-button-next .fc-button-content {
+  background-position: -11px center;
+}
+.cal .fc-button-prev {
+  position: absolute;
+  left: 1px;
+}
+.cal .fc-event-inner,
+.cal .fc-view-month > div {
+  pointer-events: none;
+}
+.cal thead .fc-widget-header {
+  border-top: none;
+}
+.cal thead .fc-widget-header:not(.fc-first) {
+  border-left: none;
+}
+.cal td.fc-widget-content,
+.cal thead .fc-widget-header {
+  background: #fcfcfc; /* Old browsers */
+  background: -moz-linear-gradient(top,  #fcfcfc 0%, #e9e8e8 100%); /* FF3.6+ */
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#fcfcfc), color-stop(100%,#e9e8e8)); /* Chrome,Safari4+ */
+  background: -webkit-linear-gradient(top,  #fcfcfc 0%,#e9e8e8 100%); /* Chrome10+,Safari5.1+ */
+  background: -o-linear-gradient(top,  #fcfcfc 0%,#e9e8e8 100%); /* Opera 11.10+ */
+  background: -ms-linear-gradient(top,  #fcfcfc 0%,#e9e8e8 100%); /* IE10+ */
+  background: linear-gradient(to bottom,  #fcfcfc 0%,#e9e8e8 100%); /* W3C */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fcfcfc', endColorstr='#e9e8e8',GradientType=0 ); /* IE6-9 */
+  border-color: #D8D5D5;
+  text-shadow: rgba(255, 255, 255, 0.5) 0 1px;
+}
+.cal td.fc-widget-content,
+.cal thead tr {
+  box-shadow: rgba(255, 255, 255, 0.65) 0 0 1px 1px inset;
+  -webkit-box-shadow: rgba(255, 255, 255, 0.65) 0 0 1px 1px inset;
+  -moz-box-shadow: rgba(255, 255, 255, 0.65) 0 0 1px 1px inset;
+  -o-box-shadow: rgba(255, 255, 255, 0.65) 0 0 1px 1px inset;
+}
+.cal thead .fc-widget-header {
+  color: #999999;
+  line-height: 28px;
+  text-transform: uppercase;
+}
+.cal td.fc-widget-content {
+  color: #666666;
+}
+.cal td.fc-widget-content.linked {
+  cursor: pointer;
+}
+.cal td.fc-state-highlight,
+.cal td.fc-widget-content:hover {
+  background: rgba(255,255,255,0.5);
+}
+.cal table.fc-border-separate {
+  position: relative;
+}
+.cal .availability-title {
+  display: none;
+}
+.cal .fc-event {
+  font-size: 10px;
+}
+.cal .fc-day-number {
+  font-size: 11px;
+}
+
+body.node-type-drupal-rooms-standalone-unit .region-content {
+	margin-bottom: 30px;
+}
+
+.leaflet-control-zoom a, .leaflet-control-layers-toggle {
+	text-decoration: none;
+}

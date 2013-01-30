@@ -42,3 +42,13 @@
 td.room_placebooking {
 	display: block;
 }
+
+.cal {
+	width: 100%;
+}
+.cal .fc-event {
+  font-size: 13px;
+}
+.cal .fc-day-number {
+	font-size: 12px;
+}
