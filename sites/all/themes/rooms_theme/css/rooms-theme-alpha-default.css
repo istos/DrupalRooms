@@ -1,0 +1,44 @@
+/* This file will hold styles for all layouts using the alpha grid (i.e. not the mobile layout). */
+
+.logo-img {
+	margin-right: 0;
+	margin-left: 10px;
+}
+
+#main-menu {
+	margin-left: 50px;
+	margin-bottom: 20px;
+}
+.region-menu {
+	text-align: left;
+}
+
+#rooms-booking-availability-search-form .form-item-rooms select,
+#rooms-booking-availability-search-form .form-item-group-size-adults select {
+  padding-right: 3px;
+}
+#rooms-booking-availability-search-form .start-date,
+#rooms-booking-availability-search-form .end-date,
+#rooms-booking-availability-search-form .form-item-group-size-adults,
+#rooms-booking-availability-search-form .form-item-rooms {
+	float: left;
+}
+#rooms-booking-availability-search-form .start-date {
+	margin-left: 90px;
+}
+#rooms-booking-availability-search-form .end-date {
+	margin-left: 50px;
+}
+
+#rooms-booking-availability-search-form .form-item-rooms {
+	margin: 25px 0 0 142px;
+	text-align: center;
+}
+
+.field-name-unit-description-description {
+	margin: 0 15px 0 230px;
+}
+
+td.room_placebooking {
+	display: block;
+}
