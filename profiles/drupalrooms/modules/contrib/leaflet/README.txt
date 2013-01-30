@@ -8,6 +8,19 @@ http://github.com/CloudMade/Leaflet.
 In its current state, maps can be rendered via the included field formatter for
 Geofield or by using the API directly.
 
+
+Installation
+------------
+
+1. Normal Drupal module installation
+
+2. Download the Leaflet library from http://leafletjs.com/. Leaflet 0.5 or higher
+   is recommended
+
+3. Enable leaflet_views for using Views and Leaflet (see below), or use the display formatters
+   for fields display.
+
+
 API Usage
 ---------
 Rendering a map is as simple as calling a single method, leaflet_render_map(),
@@ -61,7 +74,7 @@ $features = array(
 Views integration
 -----------------
 
-To render a map using Views, enable the module leaflet_views. 
+To render a map using Views, enable the module leaflet_views.
 
 You need to add at least one geofield to the Fields list, and select the Leaflet Map style
 in Format.
@@ -72,8 +85,17 @@ and Description (which will be rendered in the popup).
 As a more powerful alternative, you can use node view modes to be rendered in the popup.
 In the Description field, select "<entire node>" and then select a View mode.
 
+For a tutorial, please read http://marzeelabs.org/blog/2012/09/24/building-maps-in-drupal-using-leaflet-views/
+
 Roadmap
 -------
 
 * UI for managing maps
 * Better documentation
+
+
+Authors/Credits
+---------------
+
+* [levelos](http://drupal.org/user/54135)
+* [pvhee](http://drupal.org/user/108811)

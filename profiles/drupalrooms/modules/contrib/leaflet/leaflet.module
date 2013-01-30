@@ -2,29 +2,6 @@
 require_once ('leaflet.formatters.inc');
 
 /**
- * Implements hook_requirements().
- */
-function leaflet_requirements($phase) {
-  $requirements = array();
-
-  // ensure js library is available
-  if ($phase == 'runtime' && !file_exists(libraries_get_path('leaflet') . '/dist/leaflet.js')) {
-    $requirements['leaflet'] = array(
-      'title' => t('Leaflet library not found'),
-      'value' => t('The !leaflet javascript library was not found. Please !download it into the libraries folder.',
-        array(
-          '!leaflet' => l('Leaflet', 'http://leaflet.cloudmade.com'),
-          '!download' => l('download', 'http://leaflet.cloudmade.com/download.html'),
-        )
-      ),
-      'severity' => REQUIREMENT_ERROR,
-    );
-  }
-
-  return $requirements;
-}
-
-/**
  * Implements hook_theme().
  */
 function leaflet_theme($existing, $type, $theme, $path) {
@@ -63,6 +40,24 @@ function leaflet_library() {
         'type' => 'file',
         'media' => 'screen',
       ),
+      libraries_get_path('leaflet') . '/dist/leaflet.ie.css' => array(
+        'browsers' => array(
+          'IE' => 'lte IE 8',
+          '!IE' => FALSE,
+        ),
+      ),
+    ),
+  );
+
+  $libraries['leaflet-drupal'] = array(
+    'title' => 'Leaflet initialization',
+    'website' => 'http://drupal.org/project/leaflet',
+    'version' => '7.x-1.x',
+    'js' => array(
+      drupal_get_path('module', 'leaflet') . '/leaflet.drupal.js' => array(),
+    ),
+    'dependencies' => array(
+      array('leaflet', 'leaflet'),
     ),
   );
 
@@ -79,14 +74,24 @@ function leaflet_library() {
  * @return string map markup
  */
 function leaflet_render_map($map, $features = array(), $height = '400px') {
-  $map_id = 'leaflet_map_' . md5(serialize($features) . serialize($features));
-  drupal_add_library('leaflet', 'leaflet');
-  drupal_add_js(drupal_get_path('module', 'leaflet') . '/leaflet.drupal.js');
+  $map_id = drupal_html_id('leaflet_map');
+  drupal_add_library('leaflet', 'leaflet-drupal');
+
+  // Allow map definitions to provide a default icon
+  if (isset($map['icon']['iconUrl'])) {
+    foreach ($features as &$feature) {
+      if (!isset($feature['icon'])) {
+        $feature['icon'] = $map['icon'];
+      }
+    }
+  }
+
   $settings = array(
     'mapId' => $map_id,
     'map' => $map,
     'features' => $features,
   );
+
   drupal_add_js(array('leaflet' => array($settings)), 'setting');
 
   return theme('leaflet_map', array('map_id' => $map_id, 'height' => $height));
@@ -138,7 +143,7 @@ function leaflet_leaflet_map_info() {
       'label' => 'OSM Mapnik',
       'description' => t('Leaflet default map.'),
       'settings' => array(
-        'zoom' => 18,
+        // 'zoom' => 18,
         'minZoom' => 0,
         'maxZoom' => 18,
         'dragging' => TRUE,

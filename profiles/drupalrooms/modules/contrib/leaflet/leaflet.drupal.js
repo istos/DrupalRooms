@@ -72,10 +72,16 @@
           lMap.addControl(new L.Control.Layers(layers, overlays));
         }
 
-        // either center the map or set to bounds
+        // center the map
         if (this.map.center) {
           lMap.setView(new L.LatLng(this.map.center.lat, this.map.center.lon), this.map.settings.zoom);
         }
+        // if we have provided a zoom level, then use it after fitting bounds
+        else if (this.map.settings.zoom) {
+          Drupal.leaflet.fitbounds(lMap);
+          lMap.setZoom(this.map.settings.zoom);
+        }
+        // fit to bounds
         else {
           Drupal.leaflet.fitbounds(lMap);
         }
@@ -88,6 +94,10 @@
 
         // add the leaflet map to our settings object to make it accessible
         this.lMap = lMap;
+
+				// Destroy features so that an AJAX reload does not get parts of the old set.
+				// Required when the View has "Use AJAX" set to Yes.
+				this.features = null;
       });
 
       function leaflet_create_feature(feature) {
@@ -147,14 +157,15 @@
       // layers served from TileStream need this correction in the y coordinates
       // TODO: Need to explore this more and find a more elegant solution
       if (layer.type == 'tilestream') {
-        map_layer.getTileUrl = function (tilePoint, zoom) {
-          var subdomains = this.options.subdomains,
-            s = this.options.subdomains[(tilePoint.x + tilePoint.y) % subdomains.length];
-
-          return this._url
-            .replace('{z}', zoom)
-            .replace('{x}', tilePoint.x)
-            .replace('{y}', Math.pow(2, zoom) - tilePoint.y - 1);
+        map_layer.getTileUrl = function (tilePoint) {
+          this._adjustTilePoint(tilePoint);
+          var zoom = this._getZoomForUrl();
+          return L.Util.template(this._url, L.Util.extend({
+            s: this._getSubdomain(tilePoint),
+            z: zoom,
+            x: tilePoint.x,
+            y: Math.pow(2, zoom) - tilePoint.y - 1
+          }, this.options));
         }
       }
       return map_layer;
@@ -164,6 +175,7 @@
       var latLng = new L.LatLng(marker.lat, marker.lon);
       this.bounds.push(latLng);
       var lMarker;
+
       if (marker.icon) {
         var icon = new L.Icon({iconUrl: marker.icon.iconUrl});
 
@@ -182,6 +194,9 @@
         }
         if (marker.icon.shadowSize) {
           icon.options.shadowSize = new L.Point(parseInt(marker.icon.shadowSize.x), parseInt(marker.icon.shadowSize.y));
+        }
+        if (marker.icon.shadowAnchor) {
+          icon.options.shadowAnchor = new L.Point(parseInt(marker.icon.shadowAnchor.x), parseInt(marker.icon.shadowAnchor.y));
         }
 
         lMarker = new L.Marker(latLng, {icon:icon});
@@ -253,7 +268,7 @@
         }
       });
 
-      lJSON.addGeoJSON(json);
+      lJSON.addData(json);
       return lJSON;
     },
 

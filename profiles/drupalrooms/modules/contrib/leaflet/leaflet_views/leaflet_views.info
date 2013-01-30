@@ -4,12 +4,13 @@ core = 7.x
 dependencies[] = leaflet
 dependencies[] = geofield
 dependencies[] = views
+dependencies[] = entity
 files[] = leaflet_views.views.inc
 files[] = leaflet_views_plugin_style.inc
 
-; Information added by drupal.org packaging script on 2012-09-07
-version = "7.x-1.0-beta1"
+; Information added by drupal.org packaging script on 2013-01-30
+version = "7.x-1.0-beta2"
 core = "7.x"
 project = "leaflet"
-datestamp = "1347044609"
+datestamp = "1359548861"
 

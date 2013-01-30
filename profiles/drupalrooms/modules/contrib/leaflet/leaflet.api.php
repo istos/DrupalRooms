@@ -36,7 +36,10 @@ function hook_leaflet_map_info() {
         'fadeAnimation' => TRUE,
         'zoomAnimation' => TRUE,
         'closePopupOnClick' => TRUE,
-        'layerControl' => TRUE
+        'layerControl' => TRUE,
+        // 'minZoom' => 10,
+        // 'maxZoom' => 15,
+        // 'zoom' => 15, // set the map zoom fixed to 15
       ),
       'layers' => array(
         'earth' => array(
@@ -46,6 +49,15 @@ function hook_leaflet_map_info() {
           )
         ),
       ),
-    ),
+      // Uncomment the lines below to use a custom icon
+      // 'icon' => array(
+      //   'iconUrl'       => '/sites/default/files/icon.png',
+      //   'iconSize'      => array('x' => '20', 'y' => '40'),
+      //   'iconAnchor'    => array('x' => '20', 'y' => '40'),
+      //   'popupAnchor'   => array('x' => '-8', 'y' => '-32'),
+      //   'shadowUrl'     => '/sites/default/files/icon-shadow.png',
+      //   'shadowSize'    => array('x' => '25', 'y' => '27'),
+      //   'shadowAnchor'  => array('x' => '0', 'y' => '27'),
+      // ),
   );
 }

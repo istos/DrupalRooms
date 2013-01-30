@@ -10,7 +10,7 @@ function leaflet_field_formatter_info() {
     $formatters['geofield_leaflet'] = array(
       'label' => t('Leaflet'),
       'field types' => array('geofield'),
-      'settings' => array('leaflet_map' => '', 'icon' => ''),
+      'settings' => array('leaflet_map' => '', 'icon' => '', 'height' => 400, 'popup' => 0),
     );
   }
 
@@ -39,8 +39,22 @@ function leaflet_field_formatter_settings_form($field, $instance, $view_mode, $f
       '#default_value' => $settings['leaflet_map'],
       '#required' => TRUE,
     );
+    $element['height'] = array(
+      '#title' => t('Map Height'),
+      '#type' => 'textfield',
+      '#default_value' => $settings['height'],
+      '#field_suffix' => t('px'),
+      '#element_validate' => array('element_validate_integer_positive'),
+    );
+    $element['popup'] = array(
+      '#title' => t('Popup'),
+      '#description' => t('Show a popup for single location fields.'),
+      '#type' => 'checkbox',
+      '#default_value' => $settings['popup'],
+    );
     $element['icon'] = array(
       '#title' => t('Map Icon'),
+      '#description' => t('These settings will overwrite the icon settings defined in the map definition.'),
       '#type' => 'fieldset',
       '#collapsible' => TRUE,
       '#collapsed' => !isset($settings['icon']['iconUrl']),
@@ -105,6 +119,29 @@ function leaflet_field_formatter_settings_form($field, $instance, $view_mode, $f
       '#maxlength' => 3,
       '#size' => 3,
       '#default_value' => isset($settings['icon']['iconAnchor']['y']) ? $settings['icon']['iconAnchor']['y'] : '',
+      '#element_validate' => array('element_validate_number'),
+    );
+
+    $element['icon']['shadowAnchor'] = array(
+      '#title' => t('Shadow Anchor'),
+      '#type' => 'fieldset',
+      '#collapsible' => FALSE,
+      '#description' => t('The point from which the shadow is shown.')
+    );
+    $element['icon']['shadowAnchor']['x'] = array(
+      '#title' => t('X'),
+      '#type' => 'textfield',
+      '#maxlength' => 3,
+      '#size' => 3,
+      '#default_value' => isset($settings['icon']['shadowAnchor']['x']) ? $settings['icon']['shadowAnchor']['x'] : '',
+      '#element_validate' => array('element_validate_number'),
+    );
+    $element['icon']['shadowAnchor']['y'] = array(
+      '#title' => t('Y'),
+      '#type' => 'textfield',
+      '#maxlength' => 3,
+      '#size' => 3,
+      '#default_value' => isset($settings['icon']['shadowAnchor']['y']) ? $settings['icon']['shadowAnchor']['y'] : '',
       '#element_validate' => array('element_validate_number'),
     );
 
@@ -183,22 +220,22 @@ function leaflet_field_formatter_view($entity_type, $entity, $field, $instance, 
         $features = leaflet_process_geofield($items);
 
         // if only a single feature, set the popup content to the entity title
-        if (count($items) == 1) {
+        if ($settings['popup'] && count($items) == 1) {
           $features[0]['popup'] = entity_label($entity_type, $entity);
         }
 
-        if (!empty($settings['icon']) && isset($settings['icon']['iconUrl'])) {
+        if (!empty($settings['icon']) && $settings['icon']['iconUrl']) {
           foreach ($features as $key => $feature) {
             $features[$key]['icon'] = $settings['icon'];
           }
         }
 
-        $element[0] = array('#markup' => leaflet_render_map($map, $features));
+        $element[0] = array('#markup' => leaflet_render_map($map, $features, $settings['height'] . 'px'));
 
         break;
     }
 
-    return $element; 
+    return $element;
   }
 }
 
