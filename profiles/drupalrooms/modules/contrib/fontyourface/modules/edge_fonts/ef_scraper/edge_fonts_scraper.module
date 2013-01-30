@@ -1,0 +1,95 @@
+<?php
+
+/**
+ * @file
+ * Edge Fonts scraper - gets font info from www.edgefonts.com.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function edge_fonts_scraper_menu() {
+  $items['ef_scraper'] = array(
+    'title'           => 'EF Scraper',
+    'page callback'   => 'edge_fonts_scraper_do',
+    'access callback' => TRUE,
+    'type'            => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Page callback for 'ef_scraper'.
+ */
+function edge_fonts_scraper_do() {
+  $raw = drupal_http_request('http://www.edgefonts.com/');
+  $return = $raw->data;
+
+  $current = 0;
+  $counter = 0;
+
+  while (strpos($return, '<table>', $current) > 0) {
+
+    $start = strpos($return, '<table>', $current);
+    $end = strpos($return, '</table>', $start);
+    $portion = substr($return, $start, $end - $start);
+    $current = $end;
+
+    $start = strpos($portion, '<th>');
+    $end = strpos($portion, '</th>', $start);
+    $name = strip_tags(substr($portion, $start, $end - $start));
+
+    $start = strpos($portion, '<code>');
+    $end = strpos($portion, '</code>', $start);
+    $fname = strip_tags(substr($portion, $start, $end - $start));
+    $current2 = $end;
+
+    $variants = array();
+    while (strpos($portion, '<th>', $current2) > 0) {
+      $start = strpos($portion, '<th>', $current2);
+      $end = strpos($portion, '</th>', $start);
+      $vname = strip_tags(substr($portion, $start, $end - $start));
+      $current2 = $end;
+
+      $start = strpos($portion, '<code>', $current2);
+      $end = strpos($portion, '</code>', $start);
+      $vcode = strip_tags(substr($portion, $start, $end - $start));
+      if (!empty($variants[$vcode])) {
+        drupal_set_message(t('Duplicate variant code in %font!', array('%font' => $name)), 'warning');
+      }
+      else {
+        $variants[$vcode] = $vname;
+        $counter++;
+      }
+      $current2 = $end;
+    }
+
+    $arr[$fname] = array('fontname' => $name, 'variants' => $variants);
+  }
+
+  $out = edge_fonts_scraper_drupalcs(var_export($arr, TRUE), 2);
+
+  drupal_set_message(t('!fonts Edge Fonts of !families families scraped.', array('!fonts' => $counter, '!families' => count($arr))));
+  return '<pre>' . $out . '</pre>';
+}
+
+/**
+ * Helper function - rewrite var_export() to Drupal coding standards.
+ *
+ * We are probably reinventing the bicycle here.
+ */
+function edge_fonts_scraper_drupalcs($export, $indent = 0) {
+  $step1 = str_replace('array (', 'array(', $export);
+  $step2 = str_replace("=> \n", '=> ', $step1);
+  $step3 = preg_replace('/=>\s\s+/', '=> ', $step2);
+  if ($indent > 0) {
+    foreach (explode("\n", $step3) as $line) {
+      $tmp[] = str_repeat(' ', $indent) . $line;
+    }
+    $step4 = implode("\n", $tmp);
+  }
+  else {
+    $step4 = $step3;
+  }
+  return $step4;
+}
