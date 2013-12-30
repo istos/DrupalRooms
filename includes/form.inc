@@ -462,7 +462,7 @@ function drupal_rebuild_form($form_id, &$form_state, $old_form = NULL) {
     $form['#build_id'] = $old_form['#build_id'];
   }
   else {
-    $form['#build_id'] = 'form-' . drupal_hash_base64(uniqid(mt_rand(), TRUE) . mt_rand());
+    $form['#build_id'] = 'form-' . drupal_random_key();
   }
 
   // #action defaults to request_uri(), but in case of Ajax and other partial
@@ -727,8 +727,9 @@ function drupal_retrieve_form($form_id, &$form_state) {
   // Record the filepath of the include file containing the original form, so
   // the form builder callbacks can be loaded when the form is being rebuilt
   // from cache on a different path (such as 'system/ajax'). See
-  // form_get_cache().
-  // $menu_get_item() is not available during installation.
+  // form_get_cache(). Don't do this in maintenance mode as Drupal may not be
+  // fully bootstrapped (i.e. during installation) in which case
+  // menu_get_item() is not available.
   if (!isset($form_state['build_info']['files']['menu']) && !defined('MAINTENANCE_MODE')) {
     $item = menu_get_item();
     if (!empty($item['include_file'])) {
@@ -976,7 +977,7 @@ function drupal_prepare_form($form_id, &$form, &$form_state) {
   // @see drupal_build_form()
   // @see drupal_rebuild_form()
   if (!isset($form['#build_id'])) {
-    $form['#build_id'] = 'form-' . drupal_hash_base64(uniqid(mt_rand(), TRUE) . mt_rand());
+    $form['#build_id'] = 'form-' . drupal_random_key();
   }
   $form['form_build_id'] = array(
     '#type' => 'hidden',
@@ -1128,6 +1129,12 @@ function drupal_validate_form($form_id, &$form, &$form_state) {
 
       // Setting this error will cause the form to fail validation.
       form_set_error('form_token', t('The form has become outdated. Copy any unsaved work in the form below and then <a href="@link">reload this page</a>.', array('@link' => $url)));
+
+      // Stop here and don't run any further validation handlers, because they
+      // could invoke non-safe operations which opens the door for CSRF
+      // vulnerabilities.
+      $validated_forms[$form_id] = TRUE;
+      return;
     }
   }
 
@@ -3058,7 +3065,6 @@ function form_process_radios($element) {
  */
 function theme_checkbox($variables) {
   $element = $variables['element'];
-  $t = get_t();
   $element['#attributes']['type'] = 'checkbox';
   element_set_attributes($element, array('id', 'name', '#return_value' => 'value'));
 
@@ -3662,35 +3668,6 @@ function form_pre_render_fieldset($element) {
 /**
  * Creates a group formatted as vertical tabs.
  *
- * Note that autocomplete callbacks should include special handling as the
- * user's input may contain forward slashes. If the user-submitted string has a
- * '/' in the text that is sent in the autocomplete request, the menu system
- * will split the text and pass it to the callback as multiple arguments.
- *
- * Suppose your autocomplete path in the menu system is 'mymodule_autocomplete.'
- * In your form you have:
- * @code
- * '#autocomplete_path' => 'mymodule_autocomplete/' . $some_key . '/' . $some_id,
- * @endcode
- * The user types in "keywords" so the full path called is:
- * 'mymodule_autocomplete/$some_key/$some_id/keywords'
- *
- * You should include code similar to the following to handle slashes in the
- * input:
- * @code
- * function mymodule_autocomplete_callback($arg1, $arg2, $keywords) {
- *   $args = func_get_args();
- *   // We need to remove $arg1 and $arg2 from the beginning of the array so we
- *   // are left with the keywords.
- *   array_shift($args);
- *   array_shift($args);
- *   // We store the user's original input in $keywords, including any slashes.
- *   $keywords = implode('/', $args);
- *
- *   // Your code here.
- * }
- * @endcode
- *
  * @param $element
  *   An associative array containing the properties and children of the
  *   fieldset.
@@ -4039,8 +4016,6 @@ function theme_file($variables) {
  */
 function theme_form_element($variables) {
   $element = &$variables['element'];
-  // This is also used in the installer, pre-database setup.
-  $t = get_t();
 
   // This function is invoked as theme wrapper, but the rendered form element
   // may not necessarily have been processed by form_builder().
@@ -4199,7 +4174,7 @@ function _form_set_class(&$element, $class = array()) {
   if (!empty($element['#required'])) {
     $element['#attributes']['class'][] = 'required';
   }
-  if (isset($element['#parents']) && form_get_error($element) !== NULL) {
+  if (isset($element['#parents']) && form_get_error($element) !== NULL && !empty($element['#validated'])) {
     $element['#attributes']['class'][] = 'error';
   }
 }
