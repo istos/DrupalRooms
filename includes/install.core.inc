@@ -766,6 +766,15 @@ function install_system_module(&$install_state) {
   // Install system.module.
   drupal_install_system();
 
+  // Call file_ensure_htaccess() to ensure that all of Drupal's standard
+  // directories (e.g., the public and private files directories) have
+  // appropriate .htaccess files. These directories will have already been
+  // created by this point in the installer, since Drupal creates them during
+  // the install_verify_requirements() task. Note that we cannot call
+  // file_ensure_htaccess() any earlier than this, since it relies on
+  // system.module in order to work.
+  file_ensure_htaccess();
+
   // Enable the user module so that sessions can be recorded during the
   // upcoming bootstrap step.
   module_enable(array('user'), FALSE);
@@ -981,7 +990,7 @@ function install_settings_form_submit($form, &$form_state) {
     'required' => TRUE,
   );
   $settings['drupal_hash_salt'] = array(
-    'value'    => drupal_hash_base64(drupal_random_bytes(55)),
+    'value'    => drupal_random_key(),
     'required' => TRUE,
   );
   drupal_rewrite_settings($settings);
@@ -1041,7 +1050,21 @@ function install_select_profile(&$install_state) {
 }
 
 /**
- * Selects an installation profile from a list or from a $_POST submission.
+ * Selects an installation profile.
+ *
+ * A profile will be selected if:
+ * - Only one profile is available,
+ * - A profile was submitted through $_POST,
+ * - Exactly one of the profiles is marked as "exclusive".
+ * If multiple profiles are marked as "exclusive" then no profile will be
+ * selected.
+ *
+ * @param array $profiles
+ *   An associative array of profiles with the machine-readable names as keys.
+ *
+ * @return
+ *   The machine-readable name of the selected profile or NULL if no profile was
+ *   selected.
  */
 function _install_select_profile($profiles) {
   if (sizeof($profiles) == 0) {
@@ -1061,6 +1084,23 @@ function _install_select_profile($profiles) {
       }
     }
   }
+  // Check for a profile marked as "exclusive" and ensure that only one
+  // profile is marked as such.
+  $exclusive_profile = NULL;
+  foreach ($profiles as $profile) {
+    $profile_info = install_profile_info($profile->name);
+    if (!empty($profile_info['exclusive'])) {
+      if (empty($exclusive_profile)) {
+        $exclusive_profile = $profile->name;
+      }
+      else {
+        // We found a second "exclusive" profile. There's no way to choose
+        // between them, so we ignore the property.
+        return;
+      }
+    }
+  }
+  return $exclusive_profile;
 }
 
 /**
